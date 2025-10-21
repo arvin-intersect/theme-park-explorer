@@ -40,10 +40,24 @@ const ZoneHotspot = ({ zone }: ZoneHotspotProps) => {
       </div>
 
       {/* Hover label */}
-      <div className="absolute -bottom-16 left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none">
-        <div className="bg-card/95 backdrop-blur-md text-foreground px-4 py-2 rounded-xl shadow-xl border-2 border-primary/50 whitespace-nowrap animate-slide-in">
-          <p className="font-bold text-sm">{zone.name}</p>
-          <p className="text-xs text-muted-foreground">Click to explore</p>
+      <div className="absolute -bottom-28 left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none">
+        <div className="bg-card/95 backdrop-blur-md text-foreground p-3 rounded-xl shadow-xl border-2 border-primary/50 whitespace-nowrap animate-slide-in w-56 text-left">
+          <p className="font-bold text-base">{zone.name}</p>
+          <p className="text-xs text-muted-foreground mb-2">Click to open CRM</p>
+          <div className="space-y-1 text-sm">
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">Revenue:</span>
+              <span className="font-semibold">${zone.stats.revenue.toLocaleString()}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">Employees:</span>
+              <span className="font-semibold">{zone.stats.employees}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">Visitors:</span>
+              <span className="font-semibold">{zone.stats.visitors}</span>
+            </div>
+          </div>
         </div>
       </div>
     </button>

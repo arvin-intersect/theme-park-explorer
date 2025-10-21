@@ -32,36 +32,7 @@ const Index = () => {
                 <span className="w-2 h-2 bg-primary rounded-full animate-pulse" />
                 Interactive Map
               </p>
-              <p className="text-xs text-muted-foreground">
-                {zones.length} zones to explore
-              </p>
-            </div>
-          </div>
-
-          {/* Info Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-12">
-            <div className="bg-card/80 backdrop-blur-sm rounded-2xl p-6 border-2 border-primary/20 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
-              <div className="text-4xl mb-3">🎢</div>
-              <h3 className="text-xl font-bold text-foreground mb-2">30+ Attractions</h3>
-              <p className="text-muted-foreground text-sm">
-                From thrilling roller coasters to family-friendly rides
-              </p>
-            </div>
-
-            <div className="bg-card/80 backdrop-blur-sm rounded-2xl p-6 border-2 border-secondary/20 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
-              <div className="text-4xl mb-3">🍔</div>
-              <h3 className="text-xl font-bold text-foreground mb-2">Dining & Shops</h3>
-              <p className="text-muted-foreground text-sm">
-                Delicious food courts and unique souvenir shops
-              </p>
-            </div>
-
-            <div className="bg-card/80 backdrop-blur-sm rounded-2xl p-6 border-2 border-accent/20 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
-              <div className="text-4xl mb-3">⭐</div>
-              <h3 className="text-xl font-bold text-foreground mb-2">Premium Experience</h3>
-              <p className="text-muted-foreground text-sm">
-                Top-rated attractions and world-class entertainment
-              </p>
+              <p className="text-xs text-muted-foreground">CRM Overview</p>
             </div>
           </div>
         </div>
@@ -71,7 +42,7 @@ const Index = () => {
       <footer className="mt-12 py-8 border-t border-border bg-card/50 backdrop-blur-sm">
         <div className="container mx-auto px-4 text-center">
           <p className="text-muted-foreground text-sm">
-            🎡 Open Daily 9 AM - 10 PM | 🎟️ Get Your Tickets Online
+            © Peakville Park CRM. Open Daily 9 AM - 10 PM.
           </p>
         </div>
       </footer>

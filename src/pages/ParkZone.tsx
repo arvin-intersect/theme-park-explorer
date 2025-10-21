@@ -1,14 +1,21 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import WorkforceNav from "@/components/WorkforceNav";
-import { ArrowLeft, Star, Users, Clock } from "lucide-react";
+import { ArrowLeft, Star, Users, Clock, PlusCircle, ShoppingCart, UserCog } from "lucide-react";
 import { zones } from "@/data/zones";
+import { useAuth } from "@/contexts/AuthContext";
+import { mockEmployees } from "@/data/workforce";
 
 const ParkZone = () => {
   const { zoneId } = useParams();
   const navigate = useNavigate();
+  const { role } = useAuth();
+  const isManagerOrAdmin = role === "admin" || role === "manager";
   const zone = zones.find((z) => z.id === zoneId);
+  const assignedEmployeesData = mockEmployees.filter((emp) => zone?.assignedEmployees.includes(emp.id));
 
   if (!zone) {
     return (
@@ -27,11 +34,7 @@ const ParkZone = () => {
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-12">
-        <Button
-          variant="ghost"
-          onClick={() => navigate("/")}
-          className="gap-2 hover:bg-primary/10 mb-6"
-        >
+        <Button variant="ghost" onClick={() => navigate("/")} className="gap-2 hover:bg-primary/10 mb-6">
           <ArrowLeft className="w-4 h-4" />
           Back to Park Map
         </Button>
@@ -96,43 +99,93 @@ const ParkZone = () => {
             </Card>
           </div>
 
-          {/* Attractions Grid */}
-          <div>
-            <h2 className="text-3xl font-bold mb-6 text-foreground">Attractions & Features</h2>
+          {/* Workforce Management */}
+          <div className="mt-12">
+            <h2 className="text-3xl font-bold mb-6 text-foreground">Workforce Management</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {zone.attractions.map((attraction, index) => (
+              {assignedEmployeesData.map((employee, index) => (
                 <Card
-                  key={index}
-                  className="p-6 bg-card/80 backdrop-blur-sm border-2 hover:border-primary transition-all duration-300 hover:shadow-2xl group cursor-pointer"
-                  style={{
-                    animation: `slide-in 0.5s ease-out ${index * 0.1}s backwards`,
-                    transform: "translateZ(0)",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.transform = "perspective(1000px) rotateY(5deg) translateZ(20px)";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.transform = "perspective(1000px) rotateY(0deg) translateZ(0)";
-                  }}
+                  key={employee.id}
+                  className="p-4 bg-card/80 backdrop-blur-sm border-2 hover:border-primary/50 transition-all group"
+                  style={{ animation: `slide-in 0.5s ease-out ${index * 0.1}s backwards` }}
                 >
-                  <div className="text-4xl mb-4 group-hover:scale-110 transition-transform duration-300">
-                    {attraction.icon}
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-workspace-teal flex items-center justify-center text-white font-bold text-lg">
+                        {employee.name.charAt(0)}
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-foreground">{employee.name}</h3>
+                        <p className="text-xs text-muted-foreground">{employee.role}</p>
+                      </div>
+                    </div>
+                    <Badge variant="outline" className="flex items-center gap-1">
+                      {employee.performanceRating} <Star className="w-3 h-3 text-yellow-400" />
+                    </Badge>
                   </div>
-                  <h3 className="text-xl font-bold mb-2 text-foreground">{attraction.name}</h3>
-                  <p className="text-muted-foreground mb-4">{attraction.description}</p>
-                  <div className="flex flex-wrap gap-2">
-                    {attraction.tags.map((tag, tagIndex) => (
-                      <span
-                        key={tagIndex}
-                        className="px-3 py-1 bg-primary/10 text-primary text-xs rounded-full font-medium"
-                      >
-                        {tag}
-                      </span>
-                    ))}
+                  <div className="space-y-3 text-sm mb-4">
+                    <div>
+                      <div className="flex justify-between text-xs mb-1">
+                        <span className="text-muted-foreground">Attendance</span>
+                        <span className="font-semibold text-foreground">{employee.attendance}%</span>
+                      </div>
+                      <Progress value={employee.attendance} className="h-2" />
+                    </div>
+                    <div>
+                      <div className="flex justify-between text-xs mb-1">
+                        <span className="text-muted-foreground">Reliability</span>
+                        <span className="font-semibold text-foreground">{employee.reliability}%</span>
+                      </div>
+                      <Progress value={employee.reliability} className="h-2" />
+                    </div>
                   </div>
+                  {employee.ordersServed && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground border-t pt-3 mt-3">
+                      <ShoppingCart className="w-4 h-4 text-primary" />
+                      <span>{employee.ordersServed} orders served today</span>
+                    </div>
+                  )}
+                  {isManagerOrAdmin && (
+                    <div className="mt-4 flex gap-2 border-t pt-4">
+                      <Button size="sm" variant="outline" className="w-full gap-2">
+                        <UserCog className="w-4 h-4" /> Re-assign
+                      </Button>
+                      <Button size="sm" variant="destructive" className="w-full">
+                        Remove
+                      </Button>
+                    </div>
+                  )}
                 </Card>
               ))}
+              {isManagerOrAdmin && (
+                <Card className="border-2 border-dashed flex flex-col items-center justify-center p-4 hover:border-primary hover:text-primary transition-all text-muted-foreground">
+                  <PlusCircle className="w-12 h-12 mb-2" />
+                  <h3 className="font-bold">Add Employee</h3>
+                  <p className="text-xs text-center">Assign new staff to this zone</p>
+                </Card>
+              )}
             </div>
+          </div>
+
+          {/* Future Planning */}
+          <div className="mt-12">
+            <h2 className="text-3xl font-bold mb-6 text-foreground">Future Planning & Insights</h2>
+            <Card className="p-6 bg-card/80 backdrop-blur-sm border-2">
+              <h3 className="font-bold text-xl mb-4 text-foreground">AI-Powered Recommendations</h3>
+              <ul className="list-disc list-inside space-y-3 text-muted-foreground">
+                <li>
+                  Based on visitor forecast, consider adding 2 ride operators for the weekend evening shift.
+                </li>
+                <li>
+                  Visitor satisfaction in this zone has dropped by 5% during peak hours. Suggests a need for an
+                  additional queue manager.
+                </li>
+                <li>
+                  Profitability can be increased by 15% by introducing a premium fast-pass option for the top 2
+                  attractions in this zone.
+                </li>
+              </ul>
+            </Card>
           </div>
         </div>
       </main>

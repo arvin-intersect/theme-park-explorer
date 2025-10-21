@@ -16,6 +16,9 @@ export interface Zone {
     rating: string;
     visitors: string;
     waitTime: string;
+    revenue: number;
+    profitability: number; // As a percentage
+    employees: number;
   };
   attractions: {
     name: string;
@@ -23,6 +26,7 @@ export interface Zone {
     description: string;
     tags: string[];
   }[];
+  assignedEmployees: string[];
 }
 
 export const zones: Zone[] = [
@@ -44,6 +48,9 @@ export const zones: Zone[] = [
       rating: "4.9/5",
       visitors: "2.5k",
       waitTime: "25 min",
+      revenue: 45000,
+      profitability: 75,
+      employees: 18,
     },
     attractions: [
       {
@@ -71,6 +78,7 @@ export const zones: Zone[] = [
         tags: ["Wet", "Refreshing", "Scenic"],
       },
     ],
+    assignedEmployees: ["E001", "E005"],
   },
   {
     id: "water",
@@ -90,6 +98,9 @@ export const zones: Zone[] = [
       rating: "4.7/5",
       visitors: "3.2k",
       waitTime: "15 min",
+      revenue: 62000,
+      profitability: 68,
+      employees: 22,
     },
     attractions: [
       {
@@ -117,6 +128,7 @@ export const zones: Zone[] = [
         tags: ["Kids", "Safe", "Interactive"],
       },
     ],
+    assignedEmployees: ["E008"],
   },
   {
     id: "shops",
@@ -136,6 +148,9 @@ export const zones: Zone[] = [
       rating: "4.8/5",
       visitors: "1.8k",
       waitTime: "5 min",
+      revenue: 35000,
+      profitability: 82,
+      employees: 15,
     },
     attractions: [
       {
@@ -163,6 +178,7 @@ export const zones: Zone[] = [
         tags: ["Sweets", "Snacks", "Tasty"],
       },
     ],
+    assignedEmployees: ["E003"],
   },
   {
     id: "food",
@@ -182,6 +198,9 @@ export const zones: Zone[] = [
       rating: "4.6/5",
       visitors: "4.1k",
       waitTime: "10 min",
+      revenue: 85000,
+      profitability: 65,
+      employees: 30,
     },
     attractions: [
       {
@@ -215,6 +234,7 @@ export const zones: Zone[] = [
         tags: ["Snacks", "Sweet", "Carnival"],
       },
     ],
+    assignedEmployees: ["E002", "E006"],
   },
   {
     id: "ferris",
@@ -234,6 +254,9 @@ export const zones: Zone[] = [
       rating: "4.9/5",
       visitors: "1.5k",
       waitTime: "12 min",
+      revenue: 12000,
+      profitability: 85,
+      employees: 4,
     },
     attractions: [
       {
@@ -255,6 +278,7 @@ export const zones: Zone[] = [
         tags: ["Evening", "Beautiful", "Special"],
       },
     ],
+    assignedEmployees: [],
   },
   {
     id: "family",
@@ -274,6 +298,9 @@ export const zones: Zone[] = [
       rating: "4.8/5",
       visitors: "3.5k",
       waitTime: "8 min",
+      revenue: 55000,
+      profitability: 70,
+      employees: 25,
     },
     attractions: [
       {
@@ -301,5 +328,6 @@ export const zones: Zone[] = [
         tags: ["Spinning", "Mild", "Classic"],
       },
     ],
+    assignedEmployees: ["E007"],
   },
 ];

@@ -15,6 +15,8 @@ export interface Employee {
   role: string;
   attendance: number;
   reliability: number;
+  performanceRating: number;
+  ordersServed?: number;
   skills: string[];
   certifications: string[];
   shifts: Shift[];
@@ -74,6 +76,7 @@ export const mockEmployees: Employee[] = [
     role: "Ride Operator",
     attendance: 98,
     reliability: 96,
+    performanceRating: 4.8,
     skills: ["Sky Serpent", "Thunder Drop", "Safety Certified"],
     certifications: ["Ride Safety Level 3", "First Aid", "Guest Relations"],
     shifts: [
@@ -89,6 +92,8 @@ export const mockEmployees: Employee[] = [
     role: "Chef",
     attendance: 95,
     reliability: 94,
+    performanceRating: 4.5,
+    ordersServed: 210,
     skills: ["Grill Master", "Menu Planning", "Food Safety"],
     certifications: ["ServSafe", "Allergen Awareness", "Kitchen Management"],
     shifts: [
@@ -96,6 +101,79 @@ export const mockEmployees: Employee[] = [
       { date: "2025-10-24", time: "11:00 AM", duration: "8h", zone: "Food Court" },
       { date: "2025-10-26", time: "05:00 PM", duration: "6h", zone: "Pizza Paradise" },
     ],
+  },
+  {
+    id: "E003",
+    name: "Jessica Davis",
+    department: "Retail & Shops",
+    role: "Store Manager",
+    attendance: 99,
+    reliability: 97,
+    performanceRating: 4.9,
+    skills: ["Inventory Management", "Visual Merchandising", "POS Systems"],
+    certifications: ["Retail Management Cert.", "Customer Service Excellence"],
+    shifts: [{ date: "2025-10-22", time: "10:00 AM", duration: "8h", zone: "Shopping District" }],
+  },
+  {
+    id: "E004",
+    name: "David Wilson",
+    department: "Maintenance",
+    role: "Technician",
+    attendance: 92,
+    reliability: 98,
+    performanceRating: 4.6,
+    skills: ["Mechanical Repair", "Electrical Systems", "Hydraulics"],
+    certifications: ["Certified Maintenance Technician", "OSHA 30"],
+    shifts: [{ date: "2025-10-22", time: "06:00 AM", duration: "8h", zone: "Thrill Rides" }],
+  },
+  {
+    id: "E005",
+    name: "Emily Rodriguez",
+    department: "Rides & Attractions",
+    role: "Junior Operator",
+    attendance: 96,
+    reliability: 91,
+    performanceRating: 4.2,
+    skills: ["Twisted Tornado", "River Rapids", "Guest Assistance"],
+    certifications: ["Ride Safety Level 1", "First Aid"],
+    shifts: [{ date: "2025-10-23", time: "12:00 PM", duration: "8h", zone: "Thrill Rides" }],
+  },
+  {
+    id: "E006",
+    name: "Chris Lee",
+    department: "Food Services",
+    role: "Cashier",
+    attendance: 97,
+    reliability: 93,
+    performanceRating: 4.4,
+    ordersServed: 350,
+    skills: ["Cash Handling", "Customer Service", "Speedy Checkout"],
+    certifications: ["Food Handler Permit"],
+    shifts: [{ date: "2025-10-22", time: "11:00 AM", duration: "8h", zone: "Food Court" }],
+  },
+  {
+    id: "E007",
+    name: "Olivia Green",
+    department: "Rides & Attractions",
+    role: "Team Lead",
+    attendance: 99,
+    reliability: 98,
+    performanceRating: 4.9,
+    skills: ["Carousel Dreams", "Mini Train", "Team Supervision"],
+    certifications: ["Guest Experience Lead", "First Aid"],
+    shifts: [{ date: "2025-10-22", time: "09:00 AM", duration: "8h", zone: "Family Zone" }],
+  },
+  {
+    id: "E008",
+    name: "Daniel Garcia",
+    department: "Rides & Attractions",
+    role: "Lifeguard",
+    attendance: 94,
+    reliability: 95,
+    performanceRating: 4.3,
+    skills: ["Wave Pool", "Lazy River", "Water Rescue"],
+    certifications: ["Lifeguard Certified", "CPR"],
+    shifts: [{ date: "2025-10-22", time: "10:00 AM", duration: "8h", zone: "Water Park" }],
   },
 ];
 
