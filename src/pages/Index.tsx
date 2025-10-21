@@ -1,26 +1,12 @@
 import parkMap from "@/assets/park-map.png";
 import ZoneHotspot from "@/components/ZoneHotspot";
+import WorkforceNav from "@/components/WorkforceNav";
 import { zones } from "@/data/zones";
-import { Sparkles } from "lucide-react";
 
 const Index = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-primary/10 to-secondary/10">
-      {/* Header */}
-      <header className="sticky top-0 z-50 backdrop-blur-lg bg-background/80 border-b border-border shadow-lg">
-        <div className="container mx-auto px-4 py-6">
-          <div className="flex items-center justify-center gap-3">
-            <Sparkles className="w-8 h-8 text-primary animate-pulse" />
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent">
-              Peakville Amusement Park
-            </h1>
-            <Sparkles className="w-8 h-8 text-accent animate-pulse" />
-          </div>
-          <p className="text-center text-muted-foreground mt-2 text-sm">
-            Click on any zone to explore attractions and experiences!
-          </p>
-        </div>
-      </header>
+      <WorkforceNav />
 
       {/* Main Park Map */}
       <main className="container mx-auto px-4 py-12">

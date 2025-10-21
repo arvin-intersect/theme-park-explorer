@@ -1,6 +1,7 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import WorkforceNav from "@/components/WorkforceNav";
 import { ArrowLeft, Star, Users, Clock } from "lucide-react";
 import { zones } from "@/data/zones";
 
@@ -22,26 +23,18 @@ const ParkZone = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-secondary/5 overflow-hidden">
-      {/* Header */}
-      <header className="sticky top-0 z-50 backdrop-blur-lg bg-background/80 border-b border-border shadow-lg">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <Button
-            variant="ghost"
-            onClick={() => navigate("/")}
-            className="gap-2 hover:bg-primary/10"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back to Park
-          </Button>
-          <div className="flex items-center gap-2">
-            <div className={`w-3 h-3 rounded-full ${zone.color} animate-pulse-glow`} />
-            <span className="font-semibold text-foreground">{zone.name}</span>
-          </div>
-        </div>
-      </header>
+      <WorkforceNav />
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-12">
+        <Button
+          variant="ghost"
+          onClick={() => navigate("/")}
+          className="gap-2 hover:bg-primary/10 mb-6"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Back to Park Map
+        </Button>
         <div className="animate-zoom-in">
           {/* Hero Section */}
           <div
