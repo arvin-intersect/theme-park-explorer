@@ -255,3 +255,17 @@ export const alerts = [
     timestamp: "1 hour ago",
   },
 ];
+
+export interface TodayHighlights {
+  visitors: number;
+  revenue: number;
+  spend: number;
+  profit: number;
+}
+
+export const todayHighlights: TodayHighlights = {
+  visitors: 6247,
+  revenue: 249880,
+  spend: 112450,
+  profit: 137430,
+};
