@@ -99,6 +99,72 @@ const ParkZone = () => {
             </Card>
           </div>
 
+          {/* Attractions / Restaurant Performance */}
+          {zone.id === "food" ? (
+            <div className="mt-12">
+              <h2 className="text-3xl font-bold mb-6 text-foreground">Restaurant Performance</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {zone.attractions.map((vendor, index) => (
+                  <Card key={index} className="p-4 bg-card/80 backdrop-blur-sm border-2">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="text-3xl">{vendor.icon}</div>
+                      <div>
+                        <h3 className="font-bold text-foreground">{vendor.name}</h3>
+                        <p className="text-xs text-muted-foreground">{vendor.description}</p>
+                      </div>
+                    </div>
+                    <div>
+                      <div className="flex justify-between text-xs mb-1">
+                        <span className="text-muted-foreground">Revenue Target</span>
+                        <span className="font-semibold text-foreground">
+                          ${vendor.revenue?.toLocaleString()} / ${vendor.revenueTarget?.toLocaleString()}
+                        </span>
+                      </div>
+                      <Progress value={(vendor.revenue / vendor.revenueTarget) * 100} className="h-2" />
+                    </div>
+                    <div className="flex justify-between text-xs mt-3 text-muted-foreground">
+                      <span>Team Members Required: {vendor.teamMembersRequired}</span>
+                      <span>
+                        Working:{" "}
+                        <span
+                          className={
+                            vendor.teamMembersWorking < vendor.teamMembersRequired
+                              ? "text-destructive font-bold"
+                              : "text-success font-bold"
+                          }
+                        >
+                          {vendor.teamMembersWorking}
+                        </span>
+                      </span>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="mt-12">
+              <h2 className="text-3xl font-bold mb-6 text-foreground">Attractions</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {zone.attractions.map((attraction, index) => (
+                  <Card key={index} className="p-4 bg-card/80 backdrop-blur-sm border-2">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="text-3xl">{attraction.icon}</div>
+                      <h3 className="font-bold text-foreground">{attraction.name}</h3>
+                    </div>
+                    <p className="text-sm text-muted-foreground mb-3">{attraction.description}</p>
+                    <div className="flex flex-wrap gap-2">
+                      {attraction.tags.map((tag, i) => (
+                        <Badge key={i} variant="outline">
+                          {tag}
+                        </Badge>
+                      ))}
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Workforce Management */}
           <div className="mt-12">
             <h2 className="text-3xl font-bold mb-6 text-foreground">Workforce Management</h2>
@@ -160,8 +226,8 @@ const ParkZone = () => {
               {isManagerOrAdmin && (
                 <Card className="border-2 border-dashed flex flex-col items-center justify-center p-4 hover:border-primary hover:text-primary transition-all text-muted-foreground">
                   <PlusCircle className="w-12 h-12 mb-2" />
-                  <h3 className="font-bold">Add Employee</h3>
-                  <p className="text-xs text-center">Assign new staff to this zone</p>
+                  <h3 className="font-bold">Add Team Member</h3>
+                  <p className="text-xs text-center">Assign new member to this zone</p>
                 </Card>
               )}
             </div>

@@ -30,6 +30,8 @@ const AdminDashboard = () => {
     }
   };
 
+  const totalTeamMembers = departments.reduce((sum, dept) => sum + dept.staffCount, 0);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-workspace-light/20 to-primary/5">
       <WorkforceNav />
@@ -47,8 +49,8 @@ const AdminDashboard = () => {
           <Card className="p-6 bg-card/80 backdrop-blur-sm border-2 hover:border-primary transition-all duration-300 hover:shadow-xl">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground mb-1">Total Staff</p>
-                <p className="text-3xl font-bold text-foreground">133</p>
+                <p className="text-sm text-muted-foreground mb-1">Total Team Members</p>
+                <p className="text-3xl font-bold text-foreground">{totalTeamMembers.toLocaleString()}</p>
                 <p className="text-xs text-success mt-1">↑ 8% from last week</p>
               </div>
               <div className="p-3 bg-primary/10 rounded-xl">
@@ -61,7 +63,7 @@ const AdminDashboard = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground mb-1">Today's Visitors</p>
-                <p className="text-3xl font-bold text-foreground">6,247</p>
+                <p className="text-3xl font-bold text-foreground">36,247</p>
                 <p className="text-xs text-success mt-1">↑ 12% vs yesterday</p>
               </div>
               <div className="p-3 bg-workspace-teal/10 rounded-xl">
@@ -74,7 +76,7 @@ const AdminDashboard = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground mb-1">Revenue Today</p>
-                <p className="text-3xl font-bold text-foreground">$249K</p>
+                <p className="text-3xl font-bold text-foreground">$1.45M</p>
                 <p className="text-xs text-success mt-1">↑ 15% vs average</p>
               </div>
               <div className="p-3 bg-success/10 rounded-xl">
@@ -121,7 +123,7 @@ const AdminDashboard = () => {
                         </div>
                         <div>
                           <h3 className="font-bold text-foreground">{dept.name}</h3>
-                          <p className="text-sm text-muted-foreground">{dept.staffCount} staff</p>
+                          <p className="text-sm text-muted-foreground">{dept.staffCount} team members</p>
                         </div>
                       </div>
                       <Badge className={`${getStatusColor(dept.status)} border font-semibold`}>

@@ -8,6 +8,15 @@ interface ZoneHotspotProps {
 const ZoneHotspot = ({ zone }: ZoneHotspotProps) => {
   const navigate = useNavigate();
 
+  const getWaitTimeColor = (waitTime: string) => {
+    const minutes = parseInt(waitTime.split(" ")[0], 10);
+    if (minutes <= 3) return "text-success font-bold";
+    if (minutes <= 6) return "text-warning font-bold";
+    return "text-destructive font-bold";
+  };
+
+  const hasRevenue = zone.stats.revenue !== undefined;
+
   return (
     <button
       onClick={() => navigate(`/zone/${zone.id}`)}
@@ -45,12 +54,19 @@ const ZoneHotspot = ({ zone }: ZoneHotspotProps) => {
           <p className="font-bold text-base">{zone.name}</p>
           <p className="text-xs text-muted-foreground mb-2">Click to open CRM</p>
           <div className="space-y-1 text-sm">
+            {hasRevenue ? (
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Revenue:</span>
+                <span className="font-semibold">${zone.stats.revenue?.toLocaleString()}</span>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Wait Time:</span>
+                <span className={getWaitTimeColor(zone.stats.waitTime)}>{zone.stats.waitTime}</span>
+              </div>
+            )}
             <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Revenue:</span>
-              <span className="font-semibold">${zone.stats.revenue.toLocaleString()}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Employees:</span>
+              <span className="text-muted-foreground">Team Members:</span>
               <span className="font-semibold">{zone.stats.employees}</span>
             </div>
             <div className="flex items-center justify-between">

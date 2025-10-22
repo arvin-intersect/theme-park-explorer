@@ -1,12 +1,22 @@
-import { Card } from "@/components/ui/card";
+import { useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { rosterData, mockEmployees } from "@/data/workforce";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { rosterData, mockEmployees, Employee } from "@/data/workforce";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
-import { Users, Calendar, TrendingUp, Lightbulb, UserCheck } from "lucide-react";
+import { Users, Calendar, TrendingUp, Lightbulb, UserCheck, Eye, Star } from "lucide-react";
 import WorkforceNav from "@/components/WorkforceNav";
+import EmployeeSchedule from "@/components/EmployeeSchedule";
 
 const ManagerDashboard = () => {
+  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
+
+  const handleViewSchedule = (employee: Employee) => {
+    setSelectedEmployee(employee);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-workspace-light/20 to-workspace-teal/5">
       <WorkforceNav />
@@ -97,125 +107,96 @@ const ManagerDashboard = () => {
               </Card>
             </div>
 
-            {/* Team Members */}
+            {/* Team Members Table */}
             <div>
               <h2 className="text-2xl font-bold mb-4 text-foreground">Team Performance</h2>
-              <div className="space-y-4">
-                {mockEmployees.map((employee, index) => (
-                  <Card
-                    key={employee.id}
-                    className="p-6 bg-card/80 backdrop-blur-sm border-2 hover:border-primary transition-all duration-300 hover:shadow-xl"
-                    style={{
-                      animation: `slide-in 0.5s ease-out ${index * 0.1}s backwards`,
-                    }}
-                  >
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-workspace-teal flex items-center justify-center text-white font-bold text-lg">
-                          {employee.name.charAt(0)}
-                        </div>
-                        <div>
-                          <h3 className="font-bold text-foreground">{employee.name}</h3>
-                          <p className="text-sm text-muted-foreground">{employee.role}</p>
-                          <p className="text-xs text-muted-foreground">{employee.department}</p>
-                        </div>
-                      </div>
-                      <Badge className="bg-success/10 text-success border-success/20 border">
-                        ACTIVE
-                      </Badge>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4 mb-4">
-                      <div>
-                        <p className="text-xs text-muted-foreground mb-1">Attendance</p>
-                        <div className="flex items-center gap-2">
-                          <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
-                            <div
-                              className="h-full bg-success rounded-full"
-                              style={{ width: `${employee.attendance}%` }}
-                            />
-                          </div>
-                          <span className="text-sm font-semibold text-foreground">
-                            {employee.attendance}%
-                          </span>
-                        </div>
-                      </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground mb-1">Reliability</p>
-                        <div className="flex items-center gap-2">
-                          <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
-                            <div
-                              className="h-full bg-primary rounded-full"
-                              style={{ width: `${employee.reliability}%` }}
-                            />
-                          </div>
-                          <span className="text-sm font-semibold text-foreground">
-                            {employee.reliability}%
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {employee.skills.slice(0, 3).map((skill, idx) => (
-                        <Badge key={idx} variant="outline" className="text-xs">
-                          {skill}
-                        </Badge>
-                      ))}
-                    </div>
-                  </Card>
-                ))}
-              </div>
+              <Card className="bg-card/80 backdrop-blur-sm border-2">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Department</TableHead>
+                      <TableHead className="text-center">Attendance</TableHead>
+                      <TableHead className="text-center">Reliability</TableHead>
+                      <TableHead className="text-center">Rating</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {mockEmployees.map((employee) => (
+                      <TableRow key={employee.id}>
+                        <TableCell>
+                          <div className="font-medium">{employee.name}</div>
+                          <div className="text-sm text-muted-foreground">{employee.role}</div>
+                        </TableCell>
+                        <TableCell>{employee.department}</TableCell>
+                        <TableCell className="text-center text-success font-semibold">
+                          {employee.attendance}%
+                        </TableCell>
+                        <TableCell className="text-center text-primary font-semibold">
+                          {employee.reliability}%
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Badge variant="outline" className="gap-1">
+                            {employee.performanceRating} <Star className="w-3 h-3 text-yellow-400" />
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleViewSchedule(employee)}
+                                className="gap-2"
+                              >
+                                <Eye className="w-4 h-4" /> View Schedule
+                              </Button>
+                            </DialogTrigger>
+                          </Dialog>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </Card>
             </div>
           </div>
 
           {/* Sidebar */}
           <div className="space-y-6">
             {/* AI Suggestions */}
-            <div>
-              <h2 className="text-2xl font-bold mb-4 text-foreground flex items-center gap-2">
-                <Lightbulb className="w-6 h-6 text-warning" />
-                AI Suggestions
-              </h2>
-              <Card className="p-6 bg-gradient-to-br from-warning/5 to-warning/10 border-2 border-warning/20">
-                <div className="space-y-4">
-                  <div className="flex items-start gap-3">
-                    <div className="w-2 h-2 rounded-full bg-warning mt-2" />
-                    <div>
-                      <p className="text-sm font-medium text-foreground mb-1">
-                        Optimize Saturday staffing
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        Add 3 more staff to Rides department during 2-6 PM peak hours
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <div className="w-2 h-2 rounded-full bg-primary mt-2" />
-                    <div>
-                      <p className="text-sm font-medium text-foreground mb-1">
-                        Cross-training opportunity
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        Sarah Johnson qualified for Food Services certification
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <div className="w-2 h-2 rounded-full bg-success mt-2" />
-                    <div>
-                      <p className="text-sm font-medium text-foreground mb-1">Schedule efficiency</p>
-                      <p className="text-xs text-muted-foreground">
-                        Current roster saves $2.4K vs. manual planning
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </Card>
-            </div>
+            <Card className="bg-card/80 backdrop-blur-sm border-2">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Lightbulb className="w-6 h-6 text-warning" />
+                  AI Suggestions
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ul className="space-y-4 list-disc list-inside text-sm text-muted-foreground">
+                  <li>
+                    <span className="font-semibold text-foreground">Optimize Saturday staffing:</span> Add 3 more team
+                    members to Rides department during 2-6 PM peak hours.
+                  </li>
+                  <li>
+                    <span className="font-semibold text-foreground">Cross-training opportunity:</span> Sarah Johnson is
+                    qualified for Food Services certification.
+                  </li>
+                  <li>
+                    <span className="font-semibold text-foreground">Schedule efficiency:</span> Current roster saves
+                    $2.4K vs. manual planning.
+                  </li>
+                </ul>
+              </CardContent>
+            </Card>
 
             {/* Quick Actions */}
-            <div>
-              <h2 className="text-2xl font-bold mb-4 text-foreground">Quick Actions</h2>
-              <div className="space-y-3">
+            <Card className="bg-card/80 backdrop-blur-sm border-2">
+              <CardHeader>
+                <CardTitle>Quick Actions</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
                 <Button className="w-full justify-start gap-2" variant="outline">
                   <Calendar className="w-4 h-4" />
                   Create New Shift
@@ -228,10 +209,24 @@ const ManagerDashboard = () => {
                   <TrendingUp className="w-4 h-4" />
                   View Analytics
                 </Button>
-              </div>
-            </div>
+              </CardContent>
+            </Card>
           </div>
         </div>
+
+        {/* Schedule Dialog */}
+        {selectedEmployee && (
+          <Dialog open={!!selectedEmployee} onOpenChange={() => setSelectedEmployee(null)}>
+            <DialogContent className="max-w-4xl">
+              <DialogHeader>
+                <DialogTitle>
+                  Schedule for <span className="text-primary">{selectedEmployee.name}</span>
+                </DialogTitle>
+              </DialogHeader>
+              <EmployeeSchedule employee={selectedEmployee} />
+            </DialogContent>
+          </Dialog>
+        )}
       </main>
     </div>
   );

@@ -16,8 +16,8 @@ export interface Zone {
     rating: string;
     visitors: string;
     waitTime: string;
-    revenue: number;
-    profitability: number; // As a percentage
+    revenue?: number;
+    profitability?: number; // As a percentage
     employees: number;
   };
   attractions: {
@@ -25,6 +25,11 @@ export interface Zone {
     icon: string;
     description: string;
     tags: string[];
+    // Food-specific properties
+    revenue?: number;
+    revenueTarget?: number;
+    teamMembersRequired?: number;
+    teamMembersWorking?: number;
   }[];
   assignedEmployees: string[];
 }
@@ -46,11 +51,9 @@ export const zones: Zone[] = [
     },
     stats: {
       rating: "4.9/5",
-      visitors: "2.5k",
+      visitors: "8.5k",
       waitTime: "25 min",
-      revenue: 45000,
-      profitability: 75,
-      employees: 18,
+      employees: 180,
     },
     attractions: [
       {
@@ -96,11 +99,9 @@ export const zones: Zone[] = [
     },
     stats: {
       rating: "4.7/5",
-      visitors: "3.2k",
+      visitors: "9.2k",
       waitTime: "15 min",
-      revenue: 62000,
-      profitability: 68,
-      employees: 22,
+      employees: 220,
     },
     attractions: [
       {
@@ -146,11 +147,11 @@ export const zones: Zone[] = [
     },
     stats: {
       rating: "4.8/5",
-      visitors: "1.8k",
+      visitors: "5.8k",
       waitTime: "5 min",
-      revenue: 35000,
+      revenue: 135000,
       profitability: 82,
-      employees: 15,
+      employees: 150,
     },
     attractions: [
       {
@@ -196,11 +197,11 @@ export const zones: Zone[] = [
     },
     stats: {
       rating: "4.6/5",
-      visitors: "4.1k",
+      visitors: "14.1k",
       waitTime: "10 min",
-      revenue: 85000,
+      revenue: 285000,
       profitability: 65,
-      employees: 30,
+      employees: 300,
     },
     attractions: [
       {
@@ -208,30 +209,50 @@ export const zones: Zone[] = [
         icon: "🍔",
         description: "Gourmet burgers and classic American fare",
         tags: ["Fast Food", "Popular", "Filling"],
+        revenue: 22500,
+        revenueTarget: 30000,
+        teamMembersRequired: 12,
+        teamMembersWorking: 12,
       },
       {
         name: "Pizza Paradise",
         icon: "🍕",
         description: "New York style pizza by the slice",
         tags: ["Italian", "Quick", "Tasty"],
+        revenue: 18000,
+        revenueTarget: 25000,
+        teamMembersRequired: 10,
+        teamMembersWorking: 8,
       },
       {
         name: "Taco Town",
         icon: "🌮",
         description: "Authentic Mexican street food",
         tags: ["Mexican", "Spicy", "Fresh"],
+        revenue: 15000,
+        revenueTarget: 20000,
+        teamMembersRequired: 8,
+        teamMembersWorking: 9,
       },
       {
         name: "Ice Cream Dream",
         icon: "🍦",
         description: "Premium ice cream and frozen treats",
         tags: ["Dessert", "Cold", "Sweet"],
+        revenue: 9000,
+        revenueTarget: 15000,
+        teamMembersRequired: 6,
+        teamMembersWorking: 6,
       },
       {
         name: "Funnel Cake Factory",
         icon: "🧇",
         description: "Classic carnival treats and sweets",
         tags: ["Snacks", "Sweet", "Carnival"],
+        revenue: 11500,
+        revenueTarget: 12000,
+        teamMembersRequired: 5,
+        teamMembersWorking: 5,
       },
     ],
     assignedEmployees: ["E002", "E006"],
@@ -252,11 +273,9 @@ export const zones: Zone[] = [
     },
     stats: {
       rating: "4.9/5",
-      visitors: "1.5k",
+      visitors: "4.5k",
       waitTime: "12 min",
-      revenue: 12000,
-      profitability: 85,
-      employees: 4,
+      employees: 40,
     },
     attractions: [
       {
@@ -296,11 +315,9 @@ export const zones: Zone[] = [
     },
     stats: {
       rating: "4.8/5",
-      visitors: "3.5k",
+      visitors: "11.5k",
       waitTime: "8 min",
-      revenue: 55000,
-      profitability: 70,
-      employees: 25,
+      employees: 250,
     },
     attractions: [
       {
