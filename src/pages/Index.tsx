@@ -36,7 +36,7 @@ const Index = () => {
                 <div className="flex flex-col items-center">
                   <DollarSign className="w-8 h-8 text-success mb-2" />
                   <p className="text-2xl font-bold text-foreground">
-                    ${(todayHighlights.revenue / 1000).toFixed(1)}k
+                    ${(todayHighlights.revenue / 1000000).toFixed(2)}M
                   </p>
                   <p className="text-sm text-muted-foreground">Total Revenue</p>
                 </div>

@@ -81,7 +81,7 @@ export const zones: Zone[] = [
         tags: ["Wet", "Refreshing", "Scenic"],
       },
     ],
-    assignedEmployees: ["E001", "E005"],
+    assignedEmployees: ["E001", "E005", "E004"],
   },
   {
     id: "water",
@@ -129,7 +129,7 @@ export const zones: Zone[] = [
         tags: ["Kids", "Safe", "Interactive"],
       },
     ],
-    assignedEmployees: ["E008"],
+    assignedEmployees: ["E008", "E014"],
   },
   {
     id: "shops",
@@ -179,7 +179,7 @@ export const zones: Zone[] = [
         tags: ["Sweets", "Snacks", "Tasty"],
       },
     ],
-    assignedEmployees: ["E003"],
+    assignedEmployees: ["E003", "E013"],
   },
   {
     id: "food",
@@ -255,7 +255,7 @@ export const zones: Zone[] = [
         teamMembersWorking: 5,
       },
     ],
-    assignedEmployees: ["E002", "E006"],
+    assignedEmployees: ["E002", "E006", "E012"],
   },
   {
     id: "ferris",
@@ -297,7 +297,7 @@ export const zones: Zone[] = [
         tags: ["Evening", "Beautiful", "Special"],
       },
     ],
-    assignedEmployees: [],
+    assignedEmployees: ["E011"],
   },
   {
     id: "family",
