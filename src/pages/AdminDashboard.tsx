@@ -1,3 +1,4 @@
+import { useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { departments, visitorForecast, alerts } from "@/data/workforce";
@@ -5,7 +6,29 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { TrendingUp, Users, DollarSign, AlertTriangle, Activity } from "lucide-react";
 import WorkforceNav from "@/components/WorkforceNav";
 
+// Mapping department names to their primary zone IDs
+const departmentToZoneIdMap = {
+  "Rides & Attractions": "thrills",
+  "Food Services": "food",
+  "Retail & Shops": "shops",
+  "Maintenance": "/manager", // Special case: links to the manager dashboard
+};
+
 const AdminDashboard = () => {
+  const navigate = useNavigate();
+
+  const handleDeptCardClick = (departmentName: string) => {
+    const targetPath = departmentToZoneIdMap[departmentName];
+    if (targetPath) {
+      // If it's a direct path like '/manager', navigate there. Otherwise, treat it as a zone ID.
+      if (targetPath.startsWith("/")) {
+        navigate(targetPath);
+      } else {
+        navigate(`/zone/${targetPath}`);
+      }
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case "optimal":
@@ -108,6 +131,7 @@ const AdminDashboard = () => {
                 {departments.map((dept, index) => (
                   <Card
                     key={dept.id}
+                    onClick={() => handleDeptCardClick(dept.name)}
                     className="p-6 bg-card/80 backdrop-blur-sm border-2 hover:border-primary transition-all duration-300 hover:shadow-2xl cursor-pointer group"
                     style={{
                       animation: `slide-in 0.5s ease-out ${index * 0.1}s backwards`,

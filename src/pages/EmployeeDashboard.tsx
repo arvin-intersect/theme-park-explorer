@@ -4,10 +4,15 @@ import { Button } from "@/components/ui/button";
 import { mockEmployees } from "@/data/workforce";
 import { User, Calendar, Award, Clock, CheckCircle2, TrendingUp } from "lucide-react";
 import WorkforceNav from "@/components/WorkforceNav";
+import { toast } from "@/components/ui/sonner";
 
 const EmployeeDashboard = () => {
   // Using first employee as demo
   const employee = mockEmployees[0];
+
+  const handleActionClick = (featureName: string) => {
+    toast.info(`${featureName} feature is coming soon!`);
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-workspace-light/20 to-primary/5">
@@ -160,15 +165,23 @@ const EmployeeDashboard = () => {
             <div>
               <h2 className="text-2xl font-bold mb-4 text-foreground">Quick Actions</h2>
               <div className="space-y-3">
-                <Button className="w-full justify-start gap-2">
+                <Button className="w-full justify-start gap-2" onClick={() => handleActionClick("Request Time Off")}>
                   <Calendar className="w-4 h-4" />
                   Request Time Off
                 </Button>
-                <Button className="w-full justify-start gap-2" variant="outline">
+                <Button
+                  className="w-full justify-start gap-2"
+                  variant="outline"
+                  onClick={() => handleActionClick("Update Availability")}
+                >
                   <User className="w-4 h-4" />
                   Update Availability
                 </Button>
-                <Button className="w-full justify-start gap-2" variant="outline">
+                <Button
+                  className="w-full justify-start gap-2"
+                  variant="outline"
+                  onClick={() => handleActionClick("Swap Shifts")}
+                >
                   <Clock className="w-4 h-4" />
                   Swap Shifts
                 </Button>

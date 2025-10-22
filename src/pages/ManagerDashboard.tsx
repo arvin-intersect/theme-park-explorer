@@ -1,22 +1,34 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Employee, departments, mockEmployees } from "@/data/workforce";
+import { mockEmployees, Employee, departments } from "@/data/workforce";
 import { Users, Calendar, TrendingUp, Lightbulb, UserCheck, Eye, Star } from "lucide-react";
-import WorkforceNav from "@/components/WorkforceNav"; // CORRECTED: Using the shared component
-import EmployeeSchedule from "@/components/EmployeeSchedule"; // CORRECTED: Importing from its own file
+import WorkforceNav from "@/components/WorkforceNav";
+import EmployeeSchedule from "@/components/EmployeeSchedule";
 import RosterCalendar from "@/components/RosterCalendar";
+import { toast } from "@/components/ui/sonner";
 
 const ManagerDashboard = () => {
+  const navigate = useNavigate();
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
   const [selectedDepartment, setSelectedDepartment] = useState("All");
+  const rosterRef = useRef<HTMLDivElement>(null);
 
   const handleViewSchedule = (employee: Employee) => {
     setSelectedEmployee(employee);
+  };
+
+  const scrollToRoster = () => {
+    rosterRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  const handleActionClick = (featureName: string) => {
+    toast.info(`${featureName} feature is coming soon!`);
   };
 
   const filteredEmployees = useMemo(() => {
@@ -112,15 +124,19 @@ const ManagerDashboard = () => {
               <CardTitle>Quick Actions</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <Button className="w-full justify-start gap-2" variant="outline">
+              <Button onClick={scrollToRoster} className="w-full justify-start gap-2" variant="outline">
                 <Calendar className="w-4 h-4" />
                 Create New Shift
               </Button>
-              <Button className="w-full justify-start gap-2" variant="outline">
+              <Button
+                onClick={() => handleActionClick("Request Coverage")}
+                className="w-full justify-start gap-2"
+                variant="outline"
+              >
                 <Users className="w-4 h-4" />
                 Request Coverage for Open Shifts
               </Button>
-              <Button className="w-full justify-start gap-2" variant="outline">
+              <Button onClick={() => navigate("/admin")} className="w-full justify-start gap-2" variant="outline">
                 <TrendingUp className="w-4 h-4" />
                 View Full Workforce Analytics
               </Button>
@@ -131,8 +147,14 @@ const ManagerDashboard = () => {
         {/* Full-width content area */}
         <div className="space-y-8">
           {/* Weekly Roster Calendar */}
-          <div>
-            <h2 className="text-2xl font-bold mb-4 text-foreground">Weekly Roster Overview</h2>
+          <div ref={rosterRef}>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-2xl font-bold text-foreground">Weekly Roster Overview</h2>
+              <Button onClick={scrollToRoster} className="gap-2">
+                <Calendar className="w-4 h-4" />
+                Edit Schedule
+              </Button>
+            </div>
             <RosterCalendar />
           </div>
 

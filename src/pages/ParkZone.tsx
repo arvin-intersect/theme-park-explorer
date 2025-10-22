@@ -12,6 +12,7 @@ import { zones } from "@/data/zones";
 import { mockEmployees, Employee } from "@/data/workforce";
 import ZoneRosterCalendar from "@/components/ZoneRosterCalendar";
 import EmployeeSchedule from "@/components/EmployeeSchedule";
+import { toast } from "@/components/ui/sonner";
 
 const ParkZone = () => {
   const { zoneId } = useParams();
@@ -22,7 +23,9 @@ const ParkZone = () => {
 
   const zoneEmployees = useMemo(() => {
     if (!zone) return [];
-    return mockEmployees.filter((emp) => zone.assignedEmployees.includes(emp.id));
+    return mockEmployees.filter((emp) =>
+      emp.shifts.some((shift) => shift.zone === zone.name)
+    );
   }, [zone]);
 
   const onDutyToday = useMemo(() => {
@@ -42,6 +45,10 @@ const ParkZone = () => {
     const total = zoneEmployees.reduce((acc, emp) => acc + emp.attendance, 0);
     return Math.round(total / zoneEmployees.length);
   }, [zoneEmployees]);
+
+  const handleActionClick = (featureName: string) => {
+    toast.info(`${featureName} feature is coming soon!`);
+  };
 
   if (!zone) {
     return (
@@ -77,8 +84,8 @@ const ParkZone = () => {
           <Card className="p-6 bg-card/80 backdrop-blur-sm border-2">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground mb-1">Team Members</p>
-                <p className="text-3xl font-bold text-foreground">{zone.stats.employees}</p>
+                <p className="text-sm text-muted-foreground mb-1">Assigned Team</p>
+                <p className="text-3xl font-bold text-foreground">{zoneEmployees.length}</p>
               </div>
               <Users className="w-8 h-8 text-primary" />
             </div>
@@ -124,7 +131,7 @@ const ParkZone = () => {
               <ul className="space-y-4 list-disc list-inside text-sm text-muted-foreground">
                 <li>
                   <span className="font-semibold text-foreground">Peak Hour Support:</span> Add 2 more team members
-                  during 3-5 PM to reduce wait times, which are 25% above average.
+                  during 3-5 PM to reduce wait times, which are 25% above average for this zone.
                 </li>
               </ul>
             </CardContent>
@@ -134,10 +141,14 @@ const ParkZone = () => {
               <CardTitle>Quick Actions</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <Button className="w-full justify-start gap-2" variant="outline">
+              <Button
+                onClick={() => handleActionClick("Request Zone Coverage")}
+                className="w-full justify-start gap-2"
+                variant="outline"
+              >
                 <Users className="w-4 h-4" /> Request Zone Coverage
               </Button>
-              <Button className="w-full justify-start gap-2" variant="outline">
+              <Button onClick={() => navigate("/admin")} className="w-full justify-start gap-2" variant="outline">
                 <TrendingUp className="w-4 h-4" /> View Zone-Specific Analytics
               </Button>
             </CardContent>

@@ -1,14 +1,24 @@
 import { useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
 import { dailyRosterSummary, departments, rosterData } from "@/data/workforce";
 import { DayPicker, DayProps } from "react-day-picker";
 import "react-day-picker/dist/style.css";
 import { Calendar } from "lucide-react";
 
+const departmentToZoneIdMap = {
+  "Rides & Attractions": "thrills",
+  "Food Services": "food",
+  "Retail & Shops": "shops",
+  Maintenance: "/manager",
+};
+
 const RosterCalendar = () => {
+  const navigate = useNavigate();
   const [selectedDay, setSelectedDay] = useState<Date | undefined>(undefined);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
@@ -25,6 +35,20 @@ const RosterCalendar = () => {
     if (summaryByDate[dateString]) {
       setSelectedDay(day);
       setIsDialogOpen(true);
+    }
+  };
+
+  const handleCellClick = (departmentName: string) => {
+    const targetPath = departmentToZoneIdMap[departmentName];
+    if (targetPath) {
+      setIsDialogOpen(false); // Close dialog before navigating
+      setTimeout(() => {
+        if (targetPath.startsWith("/")) {
+          navigate(targetPath);
+        } else {
+          navigate(`/zone/${targetPath}`);
+        }
+      }, 150); // Small delay to allow dialog to close smoothly
     }
   };
 
@@ -114,7 +138,7 @@ const RosterCalendar = () => {
               Shift Roster: {selectedDay && format(selectedDay, "EEEE, MMMM d, yyyy")}
             </DialogTitle>
             <DialogDescription className="text-base">
-              Detailed breakdown of team members scheduled across all departments and time slots.
+              Detailed breakdown of team members scheduled. Click a number to navigate to that zone's dashboard.
             </DialogDescription>
           </DialogHeader>
           <div className="mt-6">
@@ -138,39 +162,43 @@ const RosterCalendar = () => {
                     <TableRow key={row.time} className={idx % 2 === 0 ? "bg-muted/20" : ""}>
                       <TableCell className="font-bold text-base">{row.time}</TableCell>
                       <TableCell className="text-center">
-                        <div className="inline-flex items-center justify-center bg-primary/10 rounded-lg px-4 py-2">
-                          <span className="text-xl font-bold text-primary">{row.rides}</span>
-                        </div>
+                        <Button
+                          variant="link"
+                          className="text-xl font-bold text-primary p-0 h-auto"
+                          onClick={() => handleCellClick("Rides & Attractions")}
+                        >
+                          {row.rides}
+                        </Button>
                       </TableCell>
                       <TableCell className="text-center">
-                        <div
-                          className="inline-flex items-center justify-center rounded-lg px-4 py-2"
-                          style={{ backgroundColor: "hsl(30, 95%, 60%, 0.1)" }}
+                        <Button
+                          variant="link"
+                          className="text-xl font-bold p-0 h-auto"
+                          style={{ color: "hsl(30, 95%, 60%)" }}
+                          onClick={() => handleCellClick("Food Services")}
                         >
-                          <span className="text-xl font-bold" style={{ color: "hsl(30, 95%, 60%)" }}>
-                            {row.food}
-                          </span>
-                        </div>
+                          {row.food}
+                        </Button>
                       </TableCell>
                       <TableCell className="text-center">
-                        <div
-                          className="inline-flex items-center justify-center rounded-lg px-4 py-2"
-                          style={{ backgroundColor: "hsl(340, 85%, 55%, 0.1)" }}
+                        <Button
+                          variant="link"
+                          className="text-xl font-bold p-0 h-auto"
+                          style={{ color: "hsl(340, 85%, 55%)" }}
+                          onClick={() => handleCellClick("Retail & Shops")}
                         >
-                          <span className="text-xl font-bold" style={{ color: "hsl(340, 85%, 55%)" }}>
-                            {row.retail}
-                          </span>
-                        </div>
+                          {row.retail}
+                        </Button>
                       </TableCell>
                       <TableCell className="text-center">
-                        <div
-                          className="inline-flex items-center justify-center rounded-lg px-4 py-2"
-                          style={{ backgroundColor: "hsl(38, 92%, 50%, 0.1)" }}
+                        <Button
+                          variant="link"
+                          className="text-xl font-bold p-0 h-auto"
+                          style={{ color: "hsl(38, 92%, 50%)" }}
+                          onClick={() => handleCellClick("Maintenance")}
                         >
-                          <span className="text-xl font-bold" style={{ color: "hsl(38, 92%, 50%)" }}>
-                            {row.maintenance}
-                          </span>
-                        </div>
+                          {row.maintenance}
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))}
