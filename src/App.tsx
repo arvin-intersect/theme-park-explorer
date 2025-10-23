@@ -10,6 +10,7 @@ import AdminDashboard from "./pages/AdminDashboard";
 import ManagerDashboard from "./pages/ManagerDashboard";
 import EmployeeDashboard from "./pages/EmployeeDashboard";
 import NotFound from "./pages/NotFound";
+import AdminSettings from "./pages/AdminSettings";
 
 const queryClient = new QueryClient();
 
@@ -22,11 +23,11 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Index />} />
-            <Route path="/zone/:zoneId" element={<ParkZone />} />
+            <Route path="/zone/:zoneSlug" element={<ParkZone />} />
             <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/admin/settings" element={<AdminSettings />} />
             <Route path="/manager" element={<ManagerDashboard />} />
             <Route path="/employee" element={<EmployeeDashboard />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
