@@ -5,25 +5,14 @@ import { useDebounce } from "use-debounce";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import {
-  Command,
-  CommandEmpty,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { supabase } from "@/lib/supabaseClient";
 
 interface EmployeeSelectorProps {
   shiftStartTime: Date;
-  shiftEndTime: Date;
   onSelectEmployee: (employee: { id: string; fullName: string }) => void;
-  requiredSkillIds?: string[];
+  departmentId: string;
 }
 
 type AvailableEmployee = {
@@ -32,51 +21,18 @@ type AvailableEmployee = {
   role: string;
 };
 
-// You need to create this function in your Supabase SQL Editor
-/*
-CREATE OR REPLACE FUNCTION get_available_employees(
-    shift_start_time timestamptz,
-    shift_end_time timestamptz,
-    search_query text
-)
-RETURNS TABLE (id uuid, full_name text, role text) AS $$
-BEGIN
-    RETURN QUERY
-    SELECT
-        p.id,
-        p.full_name,
-        p.role
-    FROM
-        public.profiles p
-    WHERE NOT EXISTS (
-        SELECT 1
-        FROM public.shifts s
-        WHERE
-            s.employee_id = p.id
-            AND (s.start_time, s.end_time) OVERLAPS (shift_start_time, shift_end_time)
-    )
-    AND p.full_name ILIKE '%' || search_query || '%'
-    LIMIT 10;
-END;
-$$ LANGUAGE plpgsql;
-*/
-
-export function EmployeeSelector({
-  shiftStartTime,
-  shiftEndTime,
-  onSelectEmployee,
-}: EmployeeSelectorProps) {
+export function EmployeeSelector({ shiftStartTime, onSelectEmployee, departmentId }: EmployeeSelectorProps) {
   const [open, setOpen] = React.useState(false);
   const [searchQuery, setSearchQuery] = React.useState("");
   const [debouncedSearchQuery] = useDebounce(searchQuery, 300);
 
   const { data: employees, isLoading } = useQuery({
-    queryKey: ["available-employees", debouncedSearchQuery, shiftStartTime, shiftEndTime],
+    queryKey: ["available-employees", debouncedSearchQuery, shiftStartTime, departmentId],
     queryFn: async () => {
        const { data, error } = await supabase.rpc("get_available_employees", {
         shift_start_time: shiftStartTime.toISOString(),
-        shift_end_time: shiftEndTime.toISOString(),
         search_query: debouncedSearchQuery,
+        target_department_id: departmentId,
       });
 
       if (error) {
@@ -85,7 +41,7 @@ export function EmployeeSelector({
       }
       return data as AvailableEmployee[];
     },
-    enabled: open,
+    enabled: open && !!departmentId,
   });
 
   return (

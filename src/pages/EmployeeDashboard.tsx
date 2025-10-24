@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { User, Calendar, Award } from "lucide-react";
+import { User, Calendar, Award, Check, X } from "lucide-react";
 import WorkforceNav from "@/components/WorkforceNav";
 import { toast } from "@/components/ui/sonner";
 import { useQuery } from "@tanstack/react-query";
@@ -46,15 +46,10 @@ const fetchEmployeeData = async (employeeId: string | null): Promise<EmployeeWit
 
   if (error) throw new Error(error.message);
   
-  // Normalize data for consistency
-  if (data) {
-    if (data.departments && !Array.isArray(data.departments)) { // @ts-ignore
-      data.departments = [data.departments];
-    }
-    data.shifts?.forEach(shift => {
-      if (shift.zones && !Array.isArray(shift.zones)) { // @ts-ignore
-        shift.zones = [shift.zones];
-      }
+  if (data) { // @ts-ignore
+    data.departments = Array.isArray(data.departments) ? data.departments[0] : data.departments;
+    data.shifts?.forEach(shift => { // @ts-ignore
+      shift.zones = Array.isArray(shift.zones) ? shift.zones[0] : shift.zones;
     });
   }
   return data as unknown as EmployeeWithDetails;
@@ -122,7 +117,7 @@ const EmployeeDashboard = () => {
                 <div>
                   <h1 className="text-4xl font-bold text-foreground">{employee.full_name}</h1>
                   <p className="text-muted-foreground">{employee.role}</p>
-                  <p className="text-sm text-muted-foreground">{employee.departments?.[0]?.name}</p>
+                  <p className="text-sm text-muted-foreground">{employee.departments?.name}</p>
                 </div>
               </div>
             </div>
@@ -140,15 +135,31 @@ const EmployeeDashboard = () => {
                     </Card>
                 </div>
 
+                 <Card>
+                    <CardHeader><CardTitle>Shift Requests</CardTitle></CardHeader>
+                    <CardContent className="space-y-3">
+                        <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                            <div>
+                                <p className="font-semibold">Saturday, Dec 14th</p>
+                                <p className="text-sm text-muted-foreground">Manager Request</p>
+                            </div>
+                            <div className="flex gap-2">
+                                <Button size="icon" variant="outline" className="h-8 w-8 text-success"><Check className="w-4 h-4"/></Button>
+                                <Button size="icon" variant="outline" className="h-8 w-8 text-destructive"><X className="w-4 h-4"/></Button>
+                            </div>
+                        </div>
+                    </CardContent>
+                 </Card>
+
                 <div>
                   <h2 className="text-2xl font-bold mb-4 flex items-center gap-2"><Calendar /> Upcoming Shifts</h2>
                   <div className="space-y-4">
-                    {employee.shifts.map((shift) => (
+                    {employee.shifts?.map((shift) => (
                       <Card key={shift.id} className="p-4">
                         <div className="flex items-center justify-between">
                           <div>
                             <p className="font-bold">{format(new Date(shift.start_time), "EEEE, MMM d")}</p>
-                            <p className="text-sm text-muted-foreground">{shift.zones?.[0]?.name}</p>
+                            <p className="text-sm text-muted-foreground">{shift.zones?.name}</p>
                           </div>
                           <Badge>{formatDistanceToNow(new Date(shift.start_time), { addSuffix: true })}</Badge>
                         </div>
@@ -161,7 +172,6 @@ const EmployeeDashboard = () => {
                   <div>
                     <h2 className="text-2xl font-bold mb-4 text-foreground">Skills</h2>
                     <Card className="p-6 flex flex-wrap gap-2">
-                        {/* THIS IS THE FIX */}
                         {employee.employee_skills.map((entry) => (
                           <Badge key={entry.skills.name} variant="outline">{entry.skills.name}</Badge>
                         ))}
@@ -170,7 +180,6 @@ const EmployeeDashboard = () => {
                   <div>
                     <h2 className="text-2xl font-bold mb-4 text-foreground flex items-center gap-2"><Award/>Certifications</h2>
                     <Card className="p-6 flex flex-wrap gap-2">
-                        {/* THIS IS THE FIX */}
                         {employee.employee_certifications.map((entry) => (
                           <Badge key={entry.certifications.name} variant="secondary">{entry.certifications.name}</Badge>
                         ))}

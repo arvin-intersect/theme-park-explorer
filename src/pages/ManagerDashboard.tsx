@@ -1,62 +1,90 @@
-import { useState, useMemo, useRef } from "react";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+// FILE: src/pages/ManagerDashboard.tsx
+import { useState, useEffect } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { format } from "date-fns";
+import { supabase } from "@/lib/supabaseClient";
+import WorkforceNav from "@/components/WorkforceNav";
+import RosterCalendar, { RosterSummary } from "@/components/RosterCalendar";
+import { EmployeeSelector } from "@/components/EmployeeSelector";
+import { Department } from "@/types/database.types";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Eye, Star, RefreshCw } from "lucide-react";
-import WorkforceNav from "@/components/WorkforceNav";
-import RosterCalendar from "@/components/RosterCalendar";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabaseClient";
-import { EmployeeWithDetails } from "@/types/database.types";
+import { toast } from "@/components/ui/sonner";
+import { RefreshCw, Star } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { toast } from "@/components/ui/sonner"; // Ensure toast is imported
 
-const fetchManagerData = async () => {
-  const { data: departments, error: deptError } = await supabase.from('departments').select('*');
-  
-  const { data: employees, error: empError } = await supabase
-    .from('profiles')
-    .select(`
-      id, full_name, role,
-      departments (id, name),
-      performance_reviews ( attendance_score, reliability_score, performance_rating )
-    `);
+type PerformanceEmployee = {
+  id: string;
+  full_name: string;
+  role: string;
+  avg_performance_rating: number;
+};
 
-  if (deptError || empError) throw new Error(deptError?.message || empError?.message);
+const fetchDepartments = async (): Promise<Department[]> => {
+  const { data, error } = await supabase.from('departments').select('*');
+  if (error) throw new Error(error.message);
+  return data || [];
+};
 
-  // Normalize data to handle Supabase's inconsistent return types
-  const normalizedEmployees = employees?.map(emp => ({
-    ...emp,
-    departments: Array.isArray(emp.departments) ? emp.departments[0] : emp.departments,
-  })) || [];
+const fetchDepartmentPerformance = async (departmentId: string | null): Promise<PerformanceEmployee[]> => {
+  if (!departmentId) return [];
+  const { data, error } = await supabase.rpc('get_department_employees_by_performance', { target_department_id: departmentId });
+  if (error) throw new Error(error.message);
+  return data || [];
+};
 
-  return { departments, employees: normalizedEmployees as unknown as EmployeeWithDetails[] };
-}
+const DepartmentCalendar = ({ departmentId, onDayClick }: { departmentId: string; onDayClick: (date: Date, summary: RosterSummary) => void; }) => {
+  if (!departmentId) {
+    return <Skeleton className="w-full h-[400px]" />;
+  }
+  return <RosterCalendar onDayClick={onDayClick} departmentId={departmentId} />;
+};
 
 const ManagerDashboard = () => {
-  const [selectedDepartment, setSelectedDepartment] = useState("All");
-  const rosterRef = useRef<HTMLDivElement>(null);
+  const [selectedDeptId, setSelectedDeptId] = useState<string | null>(null);
+  const [isRosterDialogOpen, setIsRosterDialogOpen] = useState(false);
+  const [selectedDay, setSelectedDay] = useState<{ date: Date; summary: RosterSummary } | null>(null);
   
   const queryClient = useQueryClient();
 
-  const { data, isLoading, isFetching } = useQuery({
-    queryKey: ['managerData'],
-    queryFn: fetchManagerData,
-    staleTime: 1000 * 60 * 5,
+  const { data: departments, isLoading: isLoadingDepts } = useQuery({
+    queryKey: ['departments'],
+    queryFn: fetchDepartments,
+  });
+  
+  useEffect(() => {
+    if (departments && departments.length > 0 && !selectedDeptId) {
+      setSelectedDeptId(departments[0].id);
+    }
+  }, [departments, selectedDeptId]);
+
+  const { data: employees, isLoading: isLoadingEmployees, isFetching } = useQuery({
+    queryKey: ['departmentPerformance', selectedDeptId],
+    queryFn: () => fetchDepartmentPerformance(selectedDeptId),
+    enabled: !!selectedDeptId
   });
 
-  const filteredEmployees = useMemo(() => {
-    if (!data?.employees) return [];
-    if (selectedDepartment === "All") return data.employees;
-    return data.employees.filter(emp => emp.departments?.name === selectedDepartment);
-  }, [selectedDepartment, data?.employees]);
+  const handleDayClick = (date: Date, summary: RosterSummary) => {
+    setSelectedDay({ date, summary });
+    setIsRosterDialogOpen(true);
+  };
   
   const handleRefresh = () => {
-    queryClient.invalidateQueries({ queryKey: ['managerData'] });
+    toast.info("Refreshing dashboard data...");
     queryClient.invalidateQueries({ queryKey: ['rosterSummary'] });
+    queryClient.invalidateQueries({ queryKey: ['departmentPerformance', selectedDeptId] });
   };
+  
+  const handleAddShift = (employee: { id: string; fullName: string }) => {
+    toast.success(`Simulated rostering ${employee.fullName}. The calendar will update on the next refresh.`);
+    setIsRosterDialogOpen(false);
+  };
+
+  // FIX: This calculation now correctly uses the real data from the selectedDay state.
+  const staffGap = selectedDay ? selectedDay.summary.target_staff_count - selectedDay.summary.rostered_staff_count : 0;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-blue-50/20 to-teal-50/20">
@@ -67,66 +95,130 @@ const ManagerDashboard = () => {
             <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-blue-900 to-teal-600 bg-clip-text text-transparent">
               Manager Dashboard
             </h1>
-            <p className="text-muted-foreground">Overall Team & Schedule Management</p>
+            <p className="text-muted-foreground">Departmental Rostering & Performance</p>
           </div>
           <Button onClick={handleRefresh} variant="outline" size="sm" className="gap-2">
             <RefreshCw className={`w-4 h-4 ${isFetching ? 'animate-spin' : ''}`} />
             Refresh Data
           </Button>
         </div>
-        <div ref={rosterRef} className="my-8">
-          <h2 className="text-2xl font-bold mb-4 text-foreground">Weekly Roster Overview</h2>
-          <RosterCalendar />
-        </div>
-        <div>
-            <h2 className="text-2xl font-bold mb-4 text-foreground">Team Performance</h2>
-            <Card className="bg-card/80 backdrop-blur-sm border-2">
-              <div className="p-4 border-b">
-                <Tabs value={selectedDepartment} onValueChange={setSelectedDepartment}>
-                  <TabsList className="grid w-full grid-cols-2 md:grid-cols-6 h-auto flex-wrap">
-                    <TabsTrigger value="All">All</TabsTrigger>
-                    {data?.departments?.map((dept) => (
-                      <TabsTrigger key={dept.id} value={dept.name}>{dept.name}</TabsTrigger>
-                    ))}
-                  </TabsList>
-                </Tabs>
+        
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle>Department Roster Health</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {isLoadingDepts ? (
+              <Skeleton className="w-full h-12" />
+            ) : departments && departments.length > 0 ? (
+              <Tabs value={selectedDeptId || ''} onValueChange={setSelectedDeptId}>
+                <TabsList className="grid w-full grid-cols-2 md:grid-cols-5 h-auto flex-wrap">
+                  {departments.map((dept) => (
+                    <TabsTrigger key={dept.id} value={dept.id}>{dept.name}</TabsTrigger>
+                  ))}
+                </TabsList>
+              </Tabs>
+            ) : (
+              <div className="text-center text-muted-foreground py-8">
+                No departments found
               </div>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead className="hidden md:table-cell">Department</TableHead>
-                    <TableHead className="text-center">Attendance</TableHead>
-                    <TableHead className="text-center">Rating</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {isLoading ? [...Array(5)].map((_, i) => ( <TableRow key={i}><TableCell colSpan={5}><Skeleton className="h-8 w-full"/></TableCell></TableRow>
-                  )) : filteredEmployees.map((employee) => {
-                    const latestReview = employee.performance_reviews?.[0];
-                    return (
-                    <TableRow key={employee.id}>
-                      <TableCell><div className="font-medium">{employee.full_name}</div><div className="text-sm text-muted-foreground hidden md:block">{employee.role}</div></TableCell>
-                      <TableCell className="hidden md:table-cell">{employee.departments?.name}</TableCell>
-                      <TableCell className="text-center text-green-600 font-semibold">{latestReview?.attendance_score || 'N/A'}%</TableCell>
-                      <TableCell className="text-center">
-                        <Badge variant="outline" className="gap-1">
-                          {latestReview?.performance_rating?.toFixed(1) || 'N/A'} <Star className="w-3 h-3 text-amber-400" />
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {/* THIS IS THE FIX: The onClick handler now triggers a toast */}
-                        <Button variant="ghost" size="sm" onClick={() => toast.info("Viewing employee details is coming soon!")} className="gap-2">
-                          <Eye className="w-4 h-4" /> <span className="hidden sm:inline">View</span>
-                        </Button>
+            )}
+            <div className="mt-4">
+              {selectedDeptId && <DepartmentCalendar departmentId={selectedDeptId} onDayClick={handleDayClick} />}
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader>
+            <CardTitle>Top Team Performers</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead className="text-center">Avg. Rating</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {isLoadingEmployees ? (
+                  [...Array(5)].map((_, i) => (
+                    <TableRow key={i}>
+                      <TableCell colSpan={2}>
+                        <Skeleton className="h-8 w-full"/>
                       </TableCell>
                     </TableRow>
-                  )})}
-                </TableBody>
-              </Table>
-            </Card>
-          </div>
+                  ))
+                ) : employees && employees.length > 0 ? (
+                  employees.map((employee) => (
+                    <TableRow key={employee.id}>
+                      <TableCell>
+                        <div className="font-medium">{employee.full_name}</div>
+                        <div className="text-sm text-muted-foreground">{employee.role}</div>
+                      </TableCell>
+                      <TableCell className="text-center font-semibold">
+                        <div className="flex items-center justify-center gap-1">
+                          {employee.avg_performance_rating.toFixed(1)} <Star className="w-4 h-4 text-amber-400" />
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={2} className="text-center text-muted-foreground py-4">
+                      No employee data available
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+
+        {selectedDay && selectedDeptId && (
+          <Dialog open={isRosterDialogOpen} onOpenChange={setIsRosterDialogOpen}>
+            <DialogContent className="sm:max-w-[650px]">
+              <DialogHeader>
+                <DialogTitle className="text-2xl">Roster for {format(selectedDay.date, "EEEE, MMMM d")}</DialogTitle>
+                <DialogDescription>
+                  Fill the staffing gap by assigning available team members.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 py-4">
+                {/* FIX: Using real data from selectedDay.summary */}
+                <Card className="p-4 text-center">
+                  <CardHeader className="p-2">
+                    <CardTitle>Target</CardTitle>
+                  </CardHeader>
+                  <p className="text-4xl font-bold">{selectedDay.summary.target_staff_count}</p>
+                </Card>
+                <Card className="p-4 text-center">
+                  <CardHeader className="p-2">
+                    <CardTitle>Rostered</CardTitle>
+                  </CardHeader>
+                  <p className="text-4xl font-bold">{selectedDay.summary.rostered_staff_count}</p>
+                </Card>
+                <Card className={`p-4 text-center border-2 ${staffGap > 0 ? 'border-orange-400' : 'border-green-400'}`}>
+                  <CardHeader className="p-2">
+                    <CardTitle>Gap</CardTitle>
+                  </CardHeader>
+                  <p className={`text-4xl font-bold ${staffGap > 0 ? 'text-orange-500' : 'text-green-500'}`}>{staffGap}</p>
+                </Card>
+              </div>
+              {staffGap > 0 && (
+                <div>
+                  <h3 className="font-semibold text-lg mb-2">Assign an Available Employee</h3>
+                  <EmployeeSelector
+                    shiftStartTime={selectedDay.date}
+                    onSelectEmployee={handleAddShift}
+                    departmentId={selectedDeptId}
+                  />
+                </div>
+              )}
+            </DialogContent>
+          </Dialog>
+        )}
       </main>
     </div>
   );

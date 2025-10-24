@@ -38,17 +38,19 @@ export interface PerformanceReview {
   performance_rating: number | null;
 }
 
-export interface Employee {
+export interface Profile {
   id: string;
   full_name: string;
   role: string;
+  department_id: string;
+}
+
+export interface Employee extends Profile {
   departments: { id: string, name: string } | null; 
 }
 
 export interface EmployeeWithDetails extends Employee {
   shifts: Shift[];
-  // THIS IS THE FIX: The join returns an array of objects, 
-  // where each object has a singular 'skills' or 'certifications' property.
   employee_skills: { skills: Skill }[];
   employee_certifications: { certifications: Certification }[];
   performance_reviews: PerformanceReview[];

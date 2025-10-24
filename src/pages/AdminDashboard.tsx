@@ -1,12 +1,14 @@
+// FILE: src/pages/AdminDashboard.tsx
 import { useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { TrendingUp, Users, DollarSign, AlertTriangle, Activity } from "lucide-react";
+import { TrendingUp, AlertTriangle } from "lucide-react";
 import WorkforceNav from "@/components/WorkforceNav";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabaseClient";
 import { Skeleton } from "@/components/ui/skeleton";
-import { toast } from "@/components/ui/sonner"; // NEW: Import toast
+import { toast } from "@/components/ui/sonner";
+import RosterCalendar, { RosterSummary } from "@/components/RosterCalendar";
 
 const fetchDepartmentStats = async () => {
   const { data, error } = await supabase.rpc('get_department_stats');
@@ -23,20 +25,22 @@ const AdminDashboard = () => {
   });
 
   const handleDeptCardClick = async (departmentName: string) => {
-    // FIX: This logic is now more robust.
     if (departmentName === 'Maintenance' || departmentName === 'Guest Services') {
-        navigate("/manager");
-        return;
+      toast.info(`Navigating to the ${departmentName} dashboard is not yet implemented.`);
+      return;
     }
     
-    // Find the zone whose name contains a keyword from the department name.
     const { data: zone } = await supabase.from('zones').select('slug').ilike('name', `%${departmentName.split(' ')[0]}%`).single();
     
     if (zone?.slug) {
-        navigate(`/zone/${zone.slug}`);
+      navigate(`/zone/${zone.slug}`);
     } else {
-        toast.error(`Could not find a matching zone for ${departmentName}.`);
+      toast.error(`Could not find a matching zone for ${departmentName}.`);
     }
+  };
+
+  const handleDayClick = (day: Date, summary: RosterSummary) => {
+    toast.info(`Viewing details for ${day.toLocaleDateString()} is available on the Manager Dashboard.`);
   };
 
   const getStatus = (efficiency: number) => {
@@ -44,8 +48,6 @@ const AdminDashboard = () => {
     if (efficiency > 80) return { text: "adequate", color: "bg-warning/10 text-warning border-warning/20" };
     return { text: "critical", color: "bg-destructive/10 text-destructive border-destructive/20" };
   };
-
-  const totalTeamMembers = departments?.reduce((sum, dept) => sum + (dept.staff_count || 0), 0) || 0;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-workspace-light/20 to-primary/5">
@@ -55,25 +57,24 @@ const AdminDashboard = () => {
           <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-workspace-navy to-workspace-teal bg-clip-text text-transparent">
             Master Admin Dashboard
           </h1>
-          <p className="text-muted-foreground">Real-time park operations overview</p>
+          <p className="text-muted-foreground">Real-time park operations and future rostering overview</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <Card className="p-6"><Users className="w-6 h-6 text-primary mb-2" />Total Team: {isLoading ? <Skeleton className="w-20 h-6 inline-block"/> : totalTeamMembers}</Card>
-          <Card className="p-6"><Activity className="w-6 h-6 text-workspace-teal mb-2"/>Visitors Today: ...</Card>
-          <Card className="p-6"><DollarSign className="w-6 h-6 text-success mb-2"/>Revenue Today: ...</Card>
-          <Card className="p-6"><TrendingUp className="w-6 h-6 text-warning mb-2"/>Avg Efficiency: ...</Card>
+        <div className="my-8">
+          <h2 className="text-2xl font-bold mb-4 text-foreground">3-Month Park-Wide Roster Health</h2>
+          {/* Admin view of the calendar shows park-wide data (departmentId is null) */}
+          <RosterCalendar onDayClick={handleDayClick} departmentId={null} />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-6">
             <div>
-              <h2 className="text-2xl font-bold mb-4 text-foreground">Department Status</h2>
+              <h2 className="text-2xl font-bold mb-4 text-foreground">Department Performance</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {isLoading ? (
                   [...Array(4)].map((_, i) => <Skeleton key={i} className="h-40 w-full" />)
-                ) : (
-                  departments?.map((dept) => {
+                ) : departments?.length > 0 ? (
+                  departments.map((dept: any) => {
                     const status = getStatus(dept.avg_efficiency);
                     return (
                       <Card
@@ -108,6 +109,12 @@ const AdminDashboard = () => {
                       </Card>
                     );
                   })
+                ) : (
+                  <Card className="p-6 col-span-2">
+                    <div className="text-center text-muted-foreground">
+                      No department data available
+                    </div>
+                  </Card>
                 )}
               </div>
             </div>
@@ -118,7 +125,9 @@ const AdminDashboard = () => {
               Active Alerts
             </h2>
             <div className="space-y-4">
-                <Card className="p-4"><p className="text-muted-foreground">Alerts data from Supabase would be shown here.</p></Card>
+              <Card className="p-4">
+                <p className="text-muted-foreground">Alerts data from Supabase would be shown here.</p>
+              </Card>
             </div>
           </div>
         </div>

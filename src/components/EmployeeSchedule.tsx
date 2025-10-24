@@ -9,7 +9,6 @@ const EmployeeSchedule = ({ employee }: { employee: EmployeeWithDetails }) => {
       <div className="grid grid-cols-2 gap-4">
         <div>
           <p className="text-sm text-muted-foreground">Department</p>
-          {/* THIS IS THE KEY FIX */}
           <p className="font-semibold">{employee.departments?.name}</p>
         </div>
         <div>
@@ -30,7 +29,6 @@ const EmployeeSchedule = ({ employee }: { employee: EmployeeWithDetails }) => {
                     {format(new Date(shift.start_time), "p")} - {format(new Date(shift.end_time), "p")}
                   </p>
                 </div>
-                {/* A shift's zone is also a single object */}
                 <Badge>{shift.zones?.name}</Badge>
               </div>
             </Card>
@@ -45,7 +43,7 @@ const EmployeeSchedule = ({ employee }: { employee: EmployeeWithDetails }) => {
             <p className="text-sm text-muted-foreground mb-1">Skills</p>
             <div className="flex flex-wrap gap-1">
               {employee.employee_skills?.map(({ skills }) => (
-                skills.map(skill => <Badge key={skill.name} variant="outline">{skill.name}</Badge>)
+                <Badge key={skills.name} variant="outline">{skills.name}</Badge>
               ))}
             </div>
           </div>
@@ -53,7 +51,7 @@ const EmployeeSchedule = ({ employee }: { employee: EmployeeWithDetails }) => {
             <p className="text-sm text-muted-foreground mb-1">Certifications</p>
             <div className="flex flex-wrap gap-1">
               {employee.employee_certifications?.map(({ certifications }) => (
-                certifications.map(cert => <Badge key={cert.name} variant="secondary">{cert.name}</Badge>)
+                <Badge key={certifications.name} variant="secondary">{certifications.name}</Badge>
               ))}
             </div>
           </div>
