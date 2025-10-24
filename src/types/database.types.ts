@@ -1,3 +1,6 @@
+// FILE: src/types/database.types.ts
+export type ShiftStatus = 'pending' | 'confirmed' | 'rejected' | 'cancelled';
+
 export interface Department {
   id: string;
   name: string;
@@ -19,6 +22,24 @@ export interface Shift {
   start_time: string; // ISO string
   end_time: string; // ISO string
   zones: { name: string } | null;
+  status: ShiftStatus;
+}
+
+// For the Roster Dialog to show who is on a shift
+export interface ShiftWithEmployee extends Shift {
+  profiles: {
+    id: string;
+    full_name: string;
+    role: string;
+  } | null;
+}
+
+// For the RPC function get_suggested_employees
+export interface SuggestedEmployee {
+  id: string;
+  full_name: string;
+  role: string;
+  avg_performance_rating: number;
 }
 
 export interface Skill {
@@ -49,15 +70,28 @@ export interface Employee extends Profile {
   departments: { id: string, name: string } | null; 
 }
 
-export type ShiftStatus = 'pending' | 'confirmed' | 'rejected' | 'cancelled';
-
-export interface Shift {
-  id: string;
-  start_time: string; // ISO string
-  end_time: string; // ISO string
-  zones: { name: string } | null;
-  status: ShiftStatus; // <<< ADD THIS LINE
+export interface EmployeeWithDetails extends Employee {
+  shifts: Shift[];
+  employee_skills: { skills: Skill }[];
+  employee_certifications: { certifications: Certification }[];
+  performance_reviews: PerformanceReview[];
 }
+
+export interface Highlights {
+  visitors: number;
+  revenue: number;
+  spend: number;
+  profit: number;
+}
+
+export type RosterSummary = {
+  calendar_date: string;
+  predicted_visitors: number;
+  target_staff_count: number;
+  rostered_staff_count: number;
+  department_id?: string;
+  department_name?: string;
+};
 
 export interface EmployeeWithDetails extends Employee {
   shifts: Shift[];
