@@ -49,6 +49,16 @@ export interface Employee extends Profile {
   departments: { id: string, name: string } | null; 
 }
 
+export type ShiftStatus = 'pending' | 'confirmed' | 'rejected' | 'cancelled';
+
+export interface Shift {
+  id: string;
+  start_time: string; // ISO string
+  end_time: string; // ISO string
+  zones: { name: string } | null;
+  status: ShiftStatus; // <<< ADD THIS LINE
+}
+
 export interface EmployeeWithDetails extends Employee {
   shifts: Shift[];
   employee_skills: { skills: Skill }[];

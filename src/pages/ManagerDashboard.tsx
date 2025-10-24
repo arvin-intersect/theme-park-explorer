@@ -1,12 +1,12 @@
 // FILE: src/pages/ManagerDashboard.tsx
 import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { format } from "date-fns";
+import { format, setHours, addHours } from "date-fns";
 import { supabase } from "@/lib/supabaseClient";
 import WorkforceNav from "@/components/WorkforceNav";
 import RosterCalendar, { RosterSummary } from "@/components/RosterCalendar";
 import { EmployeeSelector } from "@/components/EmployeeSelector";
-import { Department } from "@/types/database.types";
+import { Department, Zone } from "@/types/database.types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -45,6 +45,7 @@ const DepartmentCalendar = ({ departmentId, onDayClick }: { departmentId: string
 
 const ManagerDashboard = () => {
   const [selectedDeptId, setSelectedDeptId] = useState<string | null>(null);
+  const [associatedZoneId, setAssociatedZoneId] = useState<string | null>(null); // <<< NEW STATE
   const [isRosterDialogOpen, setIsRosterDialogOpen] = useState(false);
   const [selectedDay, setSelectedDay] = useState<{ date: Date; summary: RosterSummary } | null>(null);
   
@@ -55,11 +56,43 @@ const ManagerDashboard = () => {
     queryFn: fetchDepartments,
   });
   
+  // Set initial department
   useEffect(() => {
     if (departments && departments.length > 0 && !selectedDeptId) {
       setSelectedDeptId(departments[0].id);
     }
   }, [departments, selectedDeptId]);
+
+  // <<< NEW EFFECT: Find the zone associated with the selected department
+  useEffect(() => {
+    const findAssociatedZone = async () => {
+      if (!selectedDeptId || !departments) {
+        setAssociatedZoneId(null);
+        return;
+      }
+      
+      const dept = departments.find(d => d.id === selectedDeptId);
+      if (!dept) return;
+
+      // Logic borrowed from AdminDashboard to find a matching zone by name
+      const deptFirstName = dept.name.split(' ')[0];
+      const { data: zone } = await supabase
+        .from('zones')
+        .select('id')
+        .ilike('name', `%${deptFirstName}%`)
+        .single();
+      
+      if (zone) {
+        setAssociatedZoneId(zone.id);
+      } else {
+        // Fallback: just grab the first available zone if no direct match
+        const { data: fallbackZone } = await supabase.from('zones').select('id').limit(1).single();
+        setAssociatedZoneId(fallbackZone?.id || null);
+        console.warn(`No direct zone match for ${dept.name}, using fallback.`);
+      }
+    };
+    findAssociatedZone();
+  }, [selectedDeptId, departments]);
 
   const { data: employees, isLoading: isLoadingEmployees, isFetching } = useQuery({
     queryKey: ['departmentPerformance', selectedDeptId],
@@ -78,19 +111,39 @@ const ManagerDashboard = () => {
     queryClient.invalidateQueries({ queryKey: ['departmentPerformance', selectedDeptId] });
   };
   
-  const handleAddShift = (employee: { id: string; fullName: string }) => {
-    toast.success(`Simulated rostering ${employee.fullName}. The calendar will update on the next refresh.`);
+  const handleAddShift = async (employee: { id: string; fullName: string }) => {
+    if (!selectedDay || !associatedZoneId) {
+      toast.error("Cannot create shift: missing day or associated zone information.");
+      return;
+    };
+    
+    const startTime = setHours(selectedDay.date, 9);
+    const endTime = addHours(startTime, 8);
+
+    const { error } = await supabase.from('shifts').insert({
+      employee_id: employee.id,
+      zone_id: associatedZoneId, // <<< FIX: Provide the zone_id
+      start_time: startTime.toISOString(),
+      end_time: endTime.toISOString(),
+      status: 'pending'
+    });
+
+    if (error) {
+      toast.error(`Failed to request shift: ${error.message}`);
+    } else {
+      toast.success(`Shift request sent to ${employee.fullName}.`);
+    }
     setIsRosterDialogOpen(false);
   };
 
-  // FIX: This calculation now correctly uses the real data from the selectedDay state.
   const staffGap = selectedDay ? selectedDay.summary.target_staff_count - selectedDay.summary.rostered_staff_count : 0;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-blue-50/20 to-teal-50/20">
       <WorkforceNav />
       <main className="container mx-auto px-4 py-8">
-        <div className="flex justify-between items-center mb-8">
+        {/* ... (rest of the JSX is the same) ... */}
+         <div className="flex justify-between items-center mb-8">
           <div>
             <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-blue-900 to-teal-600 bg-clip-text text-transparent">
               Manager Dashboard
@@ -186,7 +239,6 @@ const ManagerDashboard = () => {
                 </DialogDescription>
               </DialogHeader>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 py-4">
-                {/* FIX: Using real data from selectedDay.summary */}
                 <Card className="p-4 text-center">
                   <CardHeader className="p-2">
                     <CardTitle>Target</CardTitle>

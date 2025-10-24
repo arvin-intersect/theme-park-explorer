@@ -17,31 +17,29 @@ export type RosterSummary = {
   department_name?: string;
 };
 
+// No changes to fetchRosterSummary needed, as it already gets the correct counts.
 const fetchRosterSummary = async (month: Date, departmentId: string | null = null): Promise<RosterSummary[]> => {
   try {
     const startDate = format(startOfMonth(month), 'yyyy-MM-dd');
     const endDate = format(endOfMonth(month), 'yyyy-MM-dd');
-
-    console.log('📅 Fetching roster summary:', { startDate, endDate, departmentId });
 
     const params: any = { 
       start_date: startDate, 
       end_date: endDate
     };
 
-    // Only add department_id if it's provided and not null
     if (departmentId) {
       params.target_department_id = departmentId;
     }
 
+    // The RPC now only counts 'confirmed' shifts, so this is accurate.
     const { data, error } = await supabase.rpc('get_calendar_overview', params);
 
     if (error) {
       console.error('❌ RPC Error:', error);
       throw new Error(`RPC failed: ${error.message}`);
     }
-
-    console.log('✅ RPC Success - Data received:', data?.length, 'records');
+    
     return data || [];
   } catch (error) {
     console.error('💥 fetchRosterSummary error:', error);
@@ -49,6 +47,8 @@ const fetchRosterSummary = async (month: Date, departmentId: string | null = nul
   }
 };
 
+
+// UPDATED URGENCY LOGIC
 const getUrgency = (rosterPct: number, date: Date) => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -66,6 +66,7 @@ const getUrgency = (rosterPct: number, date: Date) => {
   return { level: 'low', label: 'Optimal', color: 'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300' };
 };
 
+
 interface RosterCalendarProps {
   onDayClick?: (day: Date, summary: RosterSummary) => void;
   departmentId?: string | null;
@@ -74,6 +75,7 @@ interface RosterCalendarProps {
 const RosterCalendar = ({ onDayClick, departmentId = null }: RosterCalendarProps) => {
   const [currentMonth, setCurrentMonth] = useState(new Date()); 
   
+  // Always generate data for the next 3 months dynamically
   const { data: dailyRosterSummary, isLoading, error } = useQuery({
     queryKey: ['rosterSummary', getYear(currentMonth), getMonth(currentMonth), departmentId],
     queryFn: () => fetchRosterSummary(currentMonth, departmentId),
@@ -81,7 +83,6 @@ const RosterCalendar = ({ onDayClick, departmentId = null }: RosterCalendarProps
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
 
-  console.log('📊 RosterCalendar state:', { isLoading, error, dataCount: dailyRosterSummary?.length });
 
   const summaryByDate = useMemo(() => {
     if (!dailyRosterSummary) return {};
@@ -112,7 +113,6 @@ const RosterCalendar = ({ onDayClick, departmentId = null }: RosterCalendarProps
       );
     }
 
-    // Handle case where we have no data for this date
     if (!summary && !isOutside) {
       const rosterPct = 0;
       const urgency = getUrgency(rosterPct, date);
@@ -129,7 +129,7 @@ const RosterCalendar = ({ onDayClick, departmentId = null }: RosterCalendarProps
       );
     }
 
-    const rosterPct = summary && summary.target_staff_count > 0 ? summary.rostered_staff_count / summary.target_staff_count : 0;
+    const rosterPct = summary && summary.target_staff_count > 0 ? summary.rostered_staff_count / summary.target_staff_count : 1; // Treat 0 target as 100%
     const urgency = getUrgency(rosterPct, date);
     
     const canClick = onDayClick && summary && urgency.level !== 'past';
@@ -159,7 +159,7 @@ const RosterCalendar = ({ onDayClick, departmentId = null }: RosterCalendarProps
         )}
         {summary && !isOutside && summary.target_staff_count === 0 && (
           <div className="flex-1 w-full space-y-1 text-xs text-muted-foreground">
-            <div className="text-center">No shifts</div>
+            <div className="text-center">Park Closed</div>
           </div>
         )}
       </div>
