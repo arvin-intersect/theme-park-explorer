@@ -1,95 +1,59 @@
-import { useState } from "react";
+// FILE: src/pages/ParkZone.tsx
 import { useParams, useNavigate } from "react-router-dom";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import WorkforceNav from "@/components/WorkforceNav";
-import { ArrowLeft, Eye, Star } from "lucide-react";
-import ZoneRosterCalendar from "@/components/ZoneRosterCalendar";
-import EmployeeSchedule from "@/components/EmployeeSchedule";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabaseClient";
-import { EmployeeWithDetails } from "@/types/database.types";
+import WorkforceNav from "@/components/WorkforceNav";
+import RosterCalendar from "@/components/RosterCalendar";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { ArrowLeft, Users, DollarSign, Star } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/components/ui/sonner";
 
-const fetchZoneData = async (zoneSlug: string | undefined) => {
+// Type definitions for the data returned by our new SQL function
+type ZoneDetails = {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  department_id: string;
+  department_name: string;
+  projections: {
+    visitors: number;
+    revenue: number;
+  };
+  employees: {
+    id: string;
+    full_name: string;
+    role: string;
+    avg_performance_rating: number;
+  }[];
+};
+
+// The new data fetching function
+const fetchZoneData = async (zoneSlug: string | undefined): Promise<ZoneDetails | null> => {
   if (!zoneSlug) return null;
 
-  // 1. Fetch the basic zone information. This is fast.
-  const { data: zone, error: zoneError } = await supabase
-    .from('zones')
-    .select('*')
-    .eq('slug', zoneSlug)
-    .single();
+  const { data, error } = await supabase.rpc('get_zone_details', { p_zone_slug: zoneSlug });
 
-  if (zoneError || !zone) throw new Error("Zone not found");
-
-  // 2. THIS IS THE OPTIMIZATION:
-  // Instead of fetching ALL shifts, only get shifts from the last 90 days.
-  // This dramatically reduces the amount of data we need to process.
-  const ninetyDaysAgo = new Date();
-  ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
-
-  const { data: recentShifts, error: shiftError } = await supabase
-    .from('shifts')
-    .select('employee_id')
-    .eq('zone_id', zone.id)
-    .gte('start_time', ninetyDaysAgo.toISOString());
-
-  if(shiftError) throw new Error(shiftError.message);
-
-  // Create a unique list of RECENT employees. This list is now much smaller.
-  const employeeIds = [...new Set(recentShifts.map(s => s.employee_id))];
-  
-  if (employeeIds.length === 0) {
-    return { zone, employees: [] };
+  if (error) {
+    console.error("Error fetching zone details:", error);
+    throw new Error(error.message);
   }
-
-  // 3. Fetch full details ONLY for this smaller, relevant list of employees.
-  const { data: employees, error: empError } = await supabase
-    .from('profiles')
-    .select(`
-      id, full_name, role,
-      departments (id, name),
-      performance_reviews ( performance_rating ),
-      shifts ( id, start_time, end_time, zones (name) ),
-      employee_skills ( skills (name) ),
-      employee_certifications ( certifications (name) )
-    `)
-    .in('id', employeeIds);
-  
-  if (empError) throw new Error(empError.message);
-
-  // Normalize the data structure to match what components expect
-  const normalizedEmployees = employees?.map(emp => ({
-    ...emp,
-    departments: Array.isArray(emp.departments) ? emp.departments[0] : emp.departments,
-    shifts: emp.shifts.map(shift => ({
-        ...shift,
-        zones: Array.isArray(shift.zones) ? shift.zones[0] : shift.zones,
-    }))
-  })) || [];
-
-  return { zone, employees: normalizedEmployees as unknown as EmployeeWithDetails[] };
+  return data;
 };
 
 const ParkZone = () => {
   const { zoneSlug } = useParams();
   const navigate = useNavigate();
-  const [selectedEmployee, setSelectedEmployee] = useState<EmployeeWithDetails | null>(null);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['zoneData', zoneSlug],
     queryFn: () => fetchZoneData(zoneSlug),
     enabled: !!zoneSlug,
-    // THIS IS THE CACHING MECHANISM
-    staleTime: 1000 * 60 * 5, // Cache data for 5 minutes
+    staleTime: 1000 * 60 * 5, // Cache for 5 minutes
   });
-
-  const { zone, employees } = data || { zone: null, employees: [] };
 
   if (isLoading) {
     return (
@@ -100,11 +64,13 @@ const ParkZone = () => {
     );
   }
 
-  if (error || !zone) {
+  if (error || !data || !data.id) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div>
+      <div className="min-h-screen bg-background">
+        <WorkforceNav />
+        <div className="flex flex-col items-center justify-center pt-24">
           <h1 className="text-4xl font-bold mb-4">Zone Not Found</h1>
+          <p className="text-muted-foreground mb-6">Could not load the details for this park zone.</p>
           <Button onClick={() => navigate("/")}>Back to Park Map</Button>
         </div>
       </div>
@@ -120,17 +86,41 @@ const ParkZone = () => {
           Back to Park Map
         </Button>
         <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-2">{zone.name} Dashboard</h1>
-          <p className="text-muted-foreground">{zone.description}</p>
+          <h1 className="text-4xl font-bold mb-2 flex items-center gap-4">
+            <span className="text-5xl">{data.icon}</span>
+            {data.name} Dashboard
+          </h1>
+          <p className="text-muted-foreground">{data.description}</p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Est. Daily Visitors</CardTitle>
+                    <Users className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                    <div className="text-2xl font-bold">{data.projections?.visitors?.toLocaleString() || 'N/A'}</div>
+                </CardContent>
+            </Card>
+            <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Est. Daily Revenue</CardTitle>
+                    <DollarSign className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                    <div className="text-2xl font-bold">${data.projections?.revenue?.toLocaleString() || 'N/A'}</div>
+                </CardContent>
+            </Card>
         </div>
 
         <div className="space-y-8">
           <div>
-            <h2 className="text-2xl font-bold mb-4 text-foreground">Weekly Zone Roster</h2>
-            <ZoneRosterCalendar zoneId={zone.id} />
+            <h2 className="text-2xl font-bold mb-4 text-foreground">{data.department_name} Roster Health</h2>
+            <RosterCalendar departmentId={data.department_id} onDayClick={() => toast.info("Drill-down is available on the main Manager Dashboard.")} />
           </div>
           <div>
-            <h2 className="text-2xl font-bold mb-4 text-foreground">Team Performance (Last 90 Days)</h2>
+            <h2 className="text-2xl font-bold mb-4 text-foreground">Top Team Members</h2>
             <Card>
               <Table>
                 <TableHeader>
@@ -138,23 +128,17 @@ const ParkZone = () => {
                     <TableHead>Name</TableHead>
                     <TableHead>Role</TableHead>
                     <TableHead className="text-center">Rating</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {employees?.map((employee) => (
+                  {data.employees?.map((employee) => (
                     <TableRow key={employee.id}>
                       <TableCell className="font-medium">{employee.full_name}</TableCell>
                       <TableCell>{employee.role}</TableCell>
                       <TableCell className="text-center">
-                        <Badge variant="outline" className="gap-1">
-                          {employee.performance_reviews?.[0]?.performance_rating?.toFixed(1) || 'N/A'} <Star className="w-3 h-3 text-amber-400" />
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button variant="ghost" size="sm" onClick={() => toast.info(`Viewing details for ${employee.full_name} is coming soon!`)} className="gap-2">
-                          <Eye className="w-4 h-4" /> View
-                        </Button>
+                        <div className="flex items-center justify-center gap-1 font-semibold">
+                          {employee.avg_performance_rating.toFixed(1)} <Star className="w-4 h-4 text-amber-400" />
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -163,18 +147,6 @@ const ParkZone = () => {
             </Card>
           </div>
         </div>
-        {selectedEmployee && (
-          <Dialog open={!!selectedEmployee} onOpenChange={() => setSelectedEmployee(null)}>
-            <DialogContent className="max-w-xl">
-              <DialogHeader>
-                <DialogTitle className="text-2xl">
-                  Details for <span className="text-primary">{selectedEmployee.full_name}</span>
-                </DialogTitle>
-              </DialogHeader>
-              <EmployeeSchedule employee={selectedEmployee} />
-            </DialogContent>
-          </Dialog>
-        )}
       </main>
     </div>
   );
