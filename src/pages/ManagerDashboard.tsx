@@ -7,11 +7,12 @@ import RosterCalendar from "@/components/RosterCalendar";
 import { RosterDialog } from "@/components/RoasterDialog";
 import { Department, RosterSummary } from "@/types/database.types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { RefreshCw, Star } from "lucide-react";
+import { RefreshCw, Star, AlertTriangle, Info } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 type PerformanceEmployee = {
@@ -34,6 +35,18 @@ const fetchDepartmentPerformance = async (departmentId: string | null): Promise<
   return data || [];
 };
 
+const fetchActiveHighlight = async (departmentId: string | null) => {
+    if (!departmentId) return null;
+    const { data, error } = await supabase
+        .from('highlights')
+        .select('*')
+        .eq('department_id', departmentId)
+        .eq('is_active', true)
+        .maybeSingle();
+    if (error) throw new Error(error.message);
+    return data;
+}
+
 const DepartmentCalendar = ({ departmentId, onDayClick }: { departmentId: string; onDayClick: (date: Date, summary: RosterSummary) => void; }) => {
   if (!departmentId) {
     return <Skeleton className="w-full h-[400px]" />;
@@ -41,7 +54,6 @@ const DepartmentCalendar = ({ departmentId, onDayClick }: { departmentId: string
   return <RosterCalendar onDayClick={onDayClick} departmentId={departmentId} />;
 };
 
-// <<< NEW: Define park-wide departments that don't map to a single zone >>>
 const PARK_WIDE_DEPARTMENTS = ["Rides & Attractions", "Maintenance", "Park Services", "Guest Services"];
 
 const ManagerDashboard = () => {
@@ -56,24 +68,54 @@ const ManagerDashboard = () => {
     queryKey: ['departments'],
     queryFn: fetchDepartments,
   });
+  
+  const { data: highlight } = useQuery({
+      queryKey: ['highlight', selectedDeptId],
+      queryFn: () => fetchActiveHighlight(selectedDeptId),
+      enabled: !!selectedDeptId,
+  });
+
+  const selectedDeptName = departments?.find(d => d.id === selectedDeptId)?.name || "this department";
+
+  const handleDismissHighlight = async () => {
+    if (highlight) {
+      const { error } = await supabase
+        .from('highlights')
+        .update({ is_active: false })
+        .eq('id', highlight.id);
+      
+      if (error) {
+          toast.error(`Failed to dismiss: ${error.message}`);
+      } else {
+          toast.info("Highlight dismissed.");
+          queryClient.invalidateQueries({ queryKey: ['highlight', selectedDeptId] });
+      }
+    }
+  };
 
   useEffect(() => {
-    const channel = supabase.channel('shifts-db-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'shifts' },
+    const changes = supabase
+      .channel('highlights-db-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'highlights' },
         (payload) => {
-          console.log('Realtime shift change received!', payload);
-          toast.info("Roster has been updated in real-time.");
-          queryClient.invalidateQueries({ queryKey: ['rosterSummary'] });
-          queryClient.invalidateQueries({ queryKey: ['shiftsForDay'] });
-          queryClient.invalidateQueries({ queryKey: ['suggestedEmployees'] });
+          console.log('Highlight change received!', payload);
+          toast.info("New alert status from Admin.");
+          
+          const changedDeptId = (payload.new as { department_id?: string })?.department_id;
+          
+          if (changedDeptId && changedDeptId === selectedDeptId) {
+            queryClient.invalidateQueries({ queryKey: ['highlight', selectedDeptId] });
+          }
         }
       )
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(changes);
     };
-  }, [queryClient]);
+  }, [queryClient, selectedDeptId]);
   
   useEffect(() => {
     if (departments && departments.length > 0 && !selectedDeptId) {
@@ -81,7 +123,6 @@ const ManagerDashboard = () => {
     }
   }, [departments, selectedDeptId]);
 
-  // <<< UPDATED: More robust logic to find the zone >>>
   useEffect(() => {
     const findAssociatedZone = async () => {
       if (!selectedDeptId || !departments) {
@@ -92,7 +133,6 @@ const ManagerDashboard = () => {
       if (!dept) return;
 
       let zone = null;
-      // If the department is NOT a park-wide one, try to find a matching zone
       if (!PARK_WIDE_DEPARTMENTS.includes(dept.name)) {
         const deptFirstName = dept.name.split(' ')[0];
         const { data } = await supabase.from('zones').select('id').ilike('name', `%${deptFirstName}%`).maybeSingle();
@@ -102,14 +142,8 @@ const ManagerDashboard = () => {
       if (zone) {
         setAssociatedZoneId(zone.id);
       } else {
-        // If it's a park-wide department OR no match was found, fall back to the first zone
         const { data: fallbackZone } = await supabase.from('zones').select('id').limit(1).single();
-        if (fallbackZone) {
-          setAssociatedZoneId(fallbackZone.id);
-        } else {
-            toast.error("Error: No zones found in the database.");
-            setAssociatedZoneId(null);
-        }
+        if (fallbackZone) setAssociatedZoneId(fallbackZone.id);
       }
     };
     findAssociatedZone();
@@ -135,7 +169,7 @@ const ManagerDashboard = () => {
     <div className="min-h-screen bg-gradient-to-br from-background via-blue-50/20 to-teal-50/20">
       <WorkforceNav />
       <main className="container mx-auto px-4 py-8">
-        <div className="flex justify-between items-center mb-8">
+        <div className="flex justify-between items-center mb-6">
           <div>
             <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-blue-900 to-teal-600 bg-clip-text text-transparent">
               Manager Dashboard
@@ -146,6 +180,29 @@ const ManagerDashboard = () => {
             <RefreshCw className={`w-4 h-4 ${isFetching ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
+        </div>
+
+        <div className="mb-8">
+          {highlight ? (
+            <Alert className="border-yellow-400 bg-yellow-50 dark:bg-yellow-900/20 animate-slide-in">
+              <AlertTriangle className="h-4 w-4 text-yellow-500" />
+              <AlertTitle className="font-bold text-yellow-700 dark:text-yellow-300">Alert from {highlight.author} for {selectedDeptName}</AlertTitle>
+              <AlertDescription className="flex justify-between items-center gap-4">
+                <p className="text-yellow-600 dark:text-yellow-400">{highlight.message}</p>
+                <Button variant="ghost" size="sm" onClick={handleDismissHighlight} className="flex-shrink-0">
+                  Dismiss
+                </Button>
+              </AlertDescription>
+            </Alert>
+          ) : (
+            <div className="flex items-center gap-3 rounded-lg border border-dashed bg-card/50 p-4 text-muted-foreground">
+              <Info className="h-5 w-5 flex-shrink-0" />
+              <div className="text-sm">
+                <p className="font-semibold">All Clear!</p>
+                <p>There are no new alerts from Admin for this department.</p>
+              </div>
+            </div>
+          )}
         </div>
         
         <Card className="mb-8">

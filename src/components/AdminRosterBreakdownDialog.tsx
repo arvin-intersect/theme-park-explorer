@@ -5,16 +5,9 @@ import { supabase } from '@/lib/supabaseClient';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button'; // <<< THIS LINE IS THE FIX
+import { Button } from '@/components/ui/button';
 import { Skeleton } from './ui/skeleton';
 import { AlertTriangle, ShieldCheck } from 'lucide-react';
-import { toast } from 'sonner';
-
-interface AdminRosterBreakdownDialogProps {
-  isOpen: boolean;
-  onOpenChange: (open: boolean) => void;
-  date: Date | null;
-}
 
 type DepartmentHealth = {
   department_id: string;
@@ -22,6 +15,13 @@ type DepartmentHealth = {
   rostered_staff_count: number;
   target_staff_count: number;
   roster_percentage: number;
+}
+
+interface AdminRosterBreakdownDialogProps {
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+  date: Date | null;
+  onAlertManager: (department: DepartmentHealth) => void;
 }
 
 const fetchDepartmentHealth = async (date: Date): Promise<DepartmentHealth[]> => {
@@ -38,17 +38,13 @@ const getStatus = (percentage: number) => {
     return { label: 'Optimal', color: 'default' as const, icon: <ShieldCheck className="h-4 w-4" /> };
 }
 
-export function AdminRosterBreakdownDialog({ isOpen, onOpenChange, date }: AdminRosterBreakdownDialogProps) {
+export function AdminRosterBreakdownDialog({ isOpen, onOpenChange, date, onAlertManager }: AdminRosterBreakdownDialogProps) {
     
     const { data, isLoading } = useQuery({
         queryKey: ['departmentHealth', date],
         queryFn: () => fetchDepartmentHealth(date!),
         enabled: isOpen && !!date,
     });
-
-    const handleAlertManager = (deptName: string) => {
-        toast.success(`Simulated alert sent to the manager of ${deptName}.`);
-    }
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -85,7 +81,7 @@ export function AdminRosterBreakdownDialog({ isOpen, onOpenChange, date }: Admin
                                             </TableCell>
                                             <TableCell className="text-right">
                                                 {status.label === 'Critical' && (
-                                                    <Button variant="outline" size="sm" onClick={() => handleAlertManager(dept.department_name)}>
+                                                    <Button variant="outline" size="sm" onClick={() => onAlertManager(dept)}>
                                                         Alert Manager
                                                     </Button>
                                                 )}
