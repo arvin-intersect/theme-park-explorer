@@ -19,7 +19,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-// ... (fetchEmployeeList is the same)
 const fetchEmployeeList = async () => {
   const { data, error } = await supabase
     .from('profiles')
@@ -89,14 +88,27 @@ const EmployeeDashboard = () => {
     }
   };
 
-  const pendingShifts = employee?.shifts.filter(s => s.status === 'pending') || [];
-  
-  // FIX: Replace space with 'T' to create a valid ISO string before parsing.
+  // FINAL FIX:
+  // 1. Get the start of today for accurate "upcoming" comparison.
+  // 2. Add safety checks: ensure `shift` and its date properties exist and are strings before parsing.
+  // 3. Replace the space in the date string with a 'T' to make it a valid ISO format for parsing.
   const today = startOfToday();
 
+  const pendingShifts = employee?.shifts?.filter(shift => 
+    shift && 
+    shift.status === 'pending' &&
+    typeof shift.end_time === 'string' &&
+    parseISO(shift.end_time.replace(" ", "T")) >= today
+  ) || [];
+  
   const upcomingConfirmedShifts = employee?.shifts
-    .filter(s => s.status === 'confirmed' && parseISO(s.end_time.replace(" ", "T")) >= today)
-    .sort((a, b) => parseISO(a.start_time.replace(" ", "T")).getTime() - parseISO(b.start_time.replace(" ", "T")).getTime()) || [];
+    ?.filter(s => 
+      s &&
+      s.status === 'confirmed' && 
+      typeof s.end_time === 'string' &&
+      parseISO(s.end_time.replace(" ", "T")) >= today
+    )
+    .sort((a, b) => parseISO(a.start_time!.replace(" ", "T")).getTime() - parseISO(b.start_time!.replace(" ", "T")).getTime()) || [];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-workspace-light/20 to-primary/5">
@@ -180,8 +192,7 @@ const EmployeeDashboard = () => {
                 </div>
                 
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* (Skills and Certifications sections remain the same) */}
-                </div>
+                 </div>
               </div>
               
               <div className="space-y-6">

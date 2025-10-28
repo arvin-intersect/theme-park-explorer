@@ -4,12 +4,22 @@ import { Card } from "@/components/ui/card";
 import { EmployeeWithDetails } from "@/types/database.types";
 
 const EmployeeSchedule = ({ employee }: { employee: EmployeeWithDetails }) => {
-  // FIX: Replace space with 'T' to create a valid ISO string before parsing.
+  // FINAL FIX:
+  // 1. Get the start of today for accurate "upcoming" comparison.
+  // 2. Add safety checks: ensure `shift` and `shift.end_time` exist and are strings before parsing.
+  // 3. Replace the space in the date string with a 'T' to make it a valid ISO format for parsing.
   const today = startOfToday();
 
   const upcomingShifts = employee.shifts
-    ?.filter((shift) => parseISO(shift.end_time.replace(" ", "T")) >= today)
-    .sort((a, b) => parseISO(a.start_time.replace(" ", "T")).getTime() - parseISO(b.start_time.replace(" ", "T")).getTime());
+    ?.filter(shift => 
+      shift && 
+      typeof shift.start_time === 'string' && 
+      typeof shift.end_time === 'string' &&
+      parseISO(shift.end_time.replace(" ", "T")) >= today
+    )
+    .sort((a, b) => 
+      parseISO(a.start_time.replace(" ", "T")).getTime() - parseISO(b.start_time.replace(" ", "T")).getTime()
+    );
 
   return (
     <div className="space-y-4 p-2">
