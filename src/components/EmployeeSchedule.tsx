@@ -1,13 +1,15 @@
-import { format } from "date-fns";
+import { format, startOfToday, parseISO } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { EmployeeWithDetails } from "@/types/database.types";
 
 const EmployeeSchedule = ({ employee }: { employee: EmployeeWithDetails }) => {
-  // FIX: Filter for upcoming shifts only and sort them chronologically.
+  // FIX: Replace space with 'T' to create a valid ISO string before parsing.
+  const today = startOfToday();
+
   const upcomingShifts = employee.shifts
-    ?.filter((shift) => new Date(shift.end_time) >= new Date())
-    .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
+    ?.filter((shift) => parseISO(shift.end_time.replace(" ", "T")) >= today)
+    .sort((a, b) => parseISO(a.start_time.replace(" ", "T")).getTime() - parseISO(b.start_time.replace(" ", "T")).getTime());
 
   return (
     <div className="space-y-4 p-2">
@@ -30,9 +32,9 @@ const EmployeeSchedule = ({ employee }: { employee: EmployeeWithDetails }) => {
               <Card key={shift.id} className="p-3">
                 <div className="flex justify-between items-center">
                   <div>
-                    <p className="font-medium">{format(new Date(shift.start_time), "EEEE, MMM d")}</p>
+                    <p className="font-medium">{format(parseISO(shift.start_time.replace(" ", "T")), "EEEE, MMM d")}</p>
                     <p className="text-sm text-muted-foreground">
-                      {format(new Date(shift.start_time), "p")} - {format(new Date(shift.end_time), "p")}
+                      {format(parseISO(shift.start_time.replace(" ", "T")), "p")} - {format(parseISO(shift.end_time.replace(" ", "T")), "p")}
                     </p>
                   </div>
                   <Badge>{shift.zones?.name}</Badge>
