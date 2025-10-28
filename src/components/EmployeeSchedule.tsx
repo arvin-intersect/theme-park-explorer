@@ -1,26 +1,9 @@
-import { format, startOfToday, parseISO } from "date-fns";
+import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { EmployeeWithDetails } from "@/types/database.types";
 
 const EmployeeSchedule = ({ employee }: { employee: EmployeeWithDetails }) => {
-  // FINAL FIX:
-  // 1. Get the start of today for accurate "upcoming" comparison.
-  // 2. Add safety checks: ensure `shift` and `shift.end_time` exist and are strings before parsing.
-  // 3. Replace the space in the date string with a 'T' to make it a valid ISO format for parsing.
-  const today = startOfToday();
-
-  const upcomingShifts = employee.shifts
-    ?.filter(shift => 
-      shift && 
-      typeof shift.start_time === 'string' && 
-      typeof shift.end_time === 'string' &&
-      parseISO(shift.end_time.replace(" ", "T")) >= today
-    )
-    .sort((a, b) => 
-      parseISO(a.start_time.replace(" ", "T")).getTime() - parseISO(b.start_time.replace(" ", "T")).getTime()
-    );
-
   return (
     <div className="space-y-4 p-2">
       <div className="grid grid-cols-2 gap-4">
@@ -37,23 +20,19 @@ const EmployeeSchedule = ({ employee }: { employee: EmployeeWithDetails }) => {
       <div>
         <h3 className="font-semibold mb-2">Upcoming Shifts</h3>
         <div className="space-y-2 max-h-48 overflow-y-auto">
-          {upcomingShifts && upcomingShifts.length > 0 ? (
-            upcomingShifts.map((shift) => (
-              <Card key={shift.id} className="p-3">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <p className="font-medium">{format(parseISO(shift.start_time.replace(" ", "T")), "EEEE, MMM d")}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {format(parseISO(shift.start_time.replace(" ", "T")), "p")} - {format(parseISO(shift.end_time.replace(" ", "T")), "p")}
-                    </p>
-                  </div>
-                  <Badge>{shift.zones?.name}</Badge>
+          {employee.shifts?.map((shift) => (
+            <Card key={shift.id} className="p-3">
+              <div className="flex justify-between items-center">
+                <div>
+                  <p className="font-medium">{format(new Date(shift.start_time), "EEEE, MMM d")}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {format(new Date(shift.start_time), "p")} - {format(new Date(shift.end_time), "p")}
+                  </p>
                 </div>
-              </Card>
-            ))
-          ) : (
-            <p className="text-sm text-muted-foreground text-center py-4">No upcoming shifts scheduled.</p>
-          )}
+                <Badge>{shift.zones?.name}</Badge>
+              </div>
+            </Card>
+          ))}
         </div>
       </div>
 

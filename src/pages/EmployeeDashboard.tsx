@@ -10,7 +10,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabaseClient";
 import { EmployeeWithDetails } from "@/types/database.types";
 import { Skeleton } from "@/components/ui/skeleton";
-import { format, formatDistanceToNow, parseISO, startOfToday } from "date-fns";
+import { format, formatDistanceToNow } from "date-fns";
 import {
   Select,
   SelectContent,
@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+// ... (fetchEmployeeList is the same)
 const fetchEmployeeList = async () => {
   const { data, error } = await supabase
     .from('profiles')
@@ -88,27 +89,8 @@ const EmployeeDashboard = () => {
     }
   };
 
-  // FINAL FIX:
-  // 1. Get the start of today for accurate "upcoming" comparison.
-  // 2. Add safety checks: ensure `shift` and its date properties exist and are strings before parsing.
-  // 3. Replace the space in the date string with a 'T' to make it a valid ISO format for parsing.
-  const today = startOfToday();
-
-  const pendingShifts = employee?.shifts?.filter(shift => 
-    shift && 
-    shift.status === 'pending' &&
-    typeof shift.end_time === 'string' &&
-    parseISO(shift.end_time.replace(" ", "T")) >= today
-  ) || [];
-  
-  const upcomingConfirmedShifts = employee?.shifts
-    ?.filter(s => 
-      s &&
-      s.status === 'confirmed' && 
-      typeof s.end_time === 'string' &&
-      parseISO(s.end_time.replace(" ", "T")) >= today
-    )
-    .sort((a, b) => parseISO(a.start_time!.replace(" ", "T")).getTime() - parseISO(b.start_time!.replace(" ", "T")).getTime()) || [];
+  const pendingShifts = employee?.shifts.filter(s => s.status === 'pending') || [];
+  const confirmedShifts = employee?.shifts.filter(s => s.status === 'confirmed') || [];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-workspace-light/20 to-primary/5">
@@ -159,9 +141,9 @@ const EmployeeDashboard = () => {
                         {pendingShifts.map(shift => (
                            <div key={shift.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
                                 <div>
-                                    <p className="font-semibold">{format(parseISO(shift.start_time.replace(" ", "T")), "EEEE, MMM d")}</p>
+                                    <p className="font-semibold">{format(new Date(shift.start_time), "EEEE, MMM d")}</p>
                                     <p className="text-sm text-muted-foreground">
-                                      {format(parseISO(shift.start_time.replace(" ", "T")), "p")} - {format(parseISO(shift.end_time.replace(" ", "T")), "p")}
+                                      {format(new Date(shift.start_time), "p")} - {format(new Date(shift.end_time), "p")}
                                     </p>
                                 </div>
                                 <div className="flex gap-2">
@@ -177,14 +159,14 @@ const EmployeeDashboard = () => {
                 <div>
                   <h2 className="text-2xl font-bold mb-4 flex items-center gap-2"><Calendar /> Upcoming Shifts</h2>
                   <div className="space-y-4">
-                    {upcomingConfirmedShifts.length > 0 ? upcomingConfirmedShifts.map((shift) => (
+                    {confirmedShifts.length > 0 ? confirmedShifts.map((shift) => (
                       <Card key={shift.id} className="p-4">
                         <div className="flex items-center justify-between">
                           <div>
-                            <p className="font-bold">{format(parseISO(shift.start_time.replace(" ", "T")), "EEEE, MMM d")}</p>
+                            <p className="font-bold">{format(new Date(shift.start_time), "EEEE, MMM d")}</p>
                             <p className="text-sm text-muted-foreground">{shift.zones?.name || 'General'}</p>
                           </div>
-                          <Badge>{formatDistanceToNow(parseISO(shift.start_time.replace(" ", "T")), { addSuffix: true })}</Badge>
+                          <Badge>{formatDistanceToNow(new Date(shift.start_time), { addSuffix: true })}</Badge>
                         </div>
                       </Card>
                     )) : <p className="text-muted-foreground">No upcoming shifts.</p>}
@@ -192,7 +174,8 @@ const EmployeeDashboard = () => {
                 </div>
                 
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                 </div>
+                  {/* (Skills and Certifications sections remain the same) */}
+                </div>
               </div>
               
               <div className="space-y-6">
