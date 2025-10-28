@@ -21,7 +21,7 @@ interface AdminRosterBreakdownDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   date: Date | null;
-  onAlertManager: (department: DepartmentHealth) => void;
+  onAlertManager: (department: DepartmentHealth, date: Date | null) => void;
 }
 
 const fetchDepartmentHealth = async (date: Date): Promise<DepartmentHealth[]> => {
@@ -81,7 +81,7 @@ export function AdminRosterBreakdownDialog({ isOpen, onOpenChange, date, onAlert
                                             </TableCell>
                                             <TableCell className="text-right">
                                                 {status.label === 'Critical' && (
-                                                    <Button variant="outline" size="sm" onClick={() => onAlertManager(dept)}>
+                                                    <Button variant="outline" size="sm" onClick={() => onAlertManager(dept, date)}>
                                                         Alert Manager
                                                     </Button>
                                                 )}

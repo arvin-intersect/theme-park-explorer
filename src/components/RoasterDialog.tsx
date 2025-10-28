@@ -1,14 +1,16 @@
 // FILE: src/components/RosterDialog.tsx
-import { useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { format, setHours, addHours } from 'date-fns';
 import { supabase } from '@/lib/supabaseClient';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from "@/components/ui/sheet";
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Card, CardHeader, CardTitle } from '@/components/ui/card';
-import { RosterSummary, SuggestedEmployee, ShiftWithEmployee } from '@/types/database.types';
+import { RosterSummary, SuggestedEmployee, ShiftWithEmployee, EmployeeWithDetails } from '@/types/database.types';
+import EmployeeSchedule from '@/components/EmployeeSchedule';
 import { Skeleton } from './ui/skeleton';
 import { toast } from 'sonner';
 import { UserPlus, UserX, Star, Ban } from 'lucide-react';
@@ -20,6 +22,35 @@ interface RosterDialogProps {
   departmentId: string | null;
   zoneId: string | null;
 }
+
+const fetchEmployeeData = async (employeeId: string | null): Promise<EmployeeWithDetails | null> => {
+  if (!employeeId) return null;
+
+  const { data, error } = await supabase
+    .from('profiles')
+    .select(`
+      id, full_name, role,
+      departments (name),
+      shifts ( id, start_time, end_time, status, zones (name) ),
+      employee_skills ( skills (name) ),
+      employee_certifications ( certifications (name) ),
+      performance_reviews ( attendance_score, reliability_score, performance_rating )
+    `)
+    .eq('id', employeeId)
+    .single();
+
+  if (error) throw new Error(error.message);
+  
+  if (data) {
+    // @ts-ignore
+    data.departments = Array.isArray(data.departments) ? data.departments[0] : data.departments;
+    data.shifts?.forEach(shift => { 
+      // @ts-ignore
+      shift.zones = Array.isArray(shift.zones) ? shift.zones[0] : shift.zones;
+    });
+  }
+  return data as unknown as EmployeeWithDetails;
+};
 
 // This function correctly gets who is already booked for the specific department
 const fetchRosterForDay = async (departmentId: string, date: Date) => {
@@ -48,6 +79,7 @@ const fetchAvailableEmployees = async (date: Date): Promise<SuggestedEmployee[]>
 
 export function RosterDialog({ isOpen, onOpenChange, day, departmentId, zoneId }: RosterDialogProps) {
   const queryClient = useQueryClient();
+  const [detailEmployee, setDetailEmployee] = useState<SuggestedEmployee | null>(null);
   const queryEnabled = isOpen && !!departmentId && !!day;
 
   const { data: shifts, isLoading: isLoadingShifts } = useQuery({
@@ -61,6 +93,12 @@ export function RosterDialog({ isOpen, onOpenChange, day, departmentId, zoneId }
     queryKey: ['availableEmployees', day?.date],
     queryFn: () => fetchAvailableEmployees(day!.date),
     enabled: queryEnabled,
+  });
+
+  const { data: employeeDetails, isLoading: isLoadingEmployeeDetails } = useQuery({
+    queryKey: ['employeeData', detailEmployee?.id],
+    queryFn: () => fetchEmployeeData(detailEmployee!.id),
+    enabled: !!detailEmployee,
   });
 
   const { confirmed, pending } = useMemo(() => {
@@ -125,10 +163,12 @@ export function RosterDialog({ isOpen, onOpenChange, day, departmentId, zoneId }
           <TabsContent value="suggestions" className="mt-4 max-h-[300px] overflow-y-auto">
             {isLoadingSuggestions ? <Skeleton className="h-40 w-full" /> : 
               (suggestions && suggestions.length > 0) ? suggestions.map(emp => (
-                <EmployeeRow key={emp.id} buttons={<Button size="sm" variant="outline" onClick={() => handleRosterAction('create', emp.id)}><UserPlus className="mr-2 h-4 w-4" /> Request</Button>}>
+                <div key={emp.id} onClick={() => setDetailEmployee(emp)} className="cursor-pointer">
+                  <EmployeeRow buttons={null}>
                     <Avatar><AvatarFallback>{emp.full_name.charAt(0)}</AvatarFallback></Avatar>
                     <div><p className="font-semibold">{emp.full_name}</p><p className="text-xs text-muted-foreground flex items-center gap-1">{emp.role} • <Star className="h-3 w-3 text-amber-400" /> {emp.avg_performance_rating.toFixed(1)}</p></div>
-                </EmployeeRow>
+                  </EmployeeRow>
+                </div>
               )) : <div className="text-center text-sm text-muted-foreground pt-8">No available employees to suggest.</div>
             }
           </TabsContent>
@@ -141,6 +181,27 @@ export function RosterDialog({ isOpen, onOpenChange, day, departmentId, zoneId }
             {isLoadingShifts ? <Skeleton className="h-40 w-full" /> : (confirmed && confirmed.length > 0) ? confirmed.map(shift => ( <EmployeeRow key={shift.id} buttons={<Button size="sm" variant="ghost" className="text-destructive" onClick={() => handleRosterAction('delete', shift.profiles!.id, shift.id)}><UserX className="mr-2 h-4 w-4" /> Remove</Button>}> <Avatar><AvatarFallback>{shift.profiles!.full_name.charAt(0)}</AvatarFallback></Avatar> <div><p className="font-semibold">{shift.profiles!.full_name}</p><p className="text-xs text-muted-foreground">{shift.profiles!.role}</p></div> </EmployeeRow> )) : <div className="text-center text-sm text-muted-foreground pt-8">No staff confirmed for this day.</div> }
           </TabsContent>
         </Tabs>
+        
+        <Sheet open={!!detailEmployee} onOpenChange={(open) => !open && setDetailEmployee(null)}>
+          <SheetContent className="w-[400px] sm:w-[540px] sm:max-w-none overflow-y-auto">
+            <SheetHeader>
+              <SheetTitle>{detailEmployee?.full_name}</SheetTitle>
+              <SheetDescription>{detailEmployee?.role}</SheetDescription>
+            </SheetHeader>
+            <div className="py-4">
+              {isLoadingEmployeeDetails && <Skeleton className="h-64 w-full" />}
+              {employeeDetails && <EmployeeSchedule employee={employeeDetails} />}
+            </div>
+            <SheetFooter>
+              <Button onClick={() => {
+                handleRosterAction('create', detailEmployee!.id);
+                setDetailEmployee(null);
+              }}>
+                <UserPlus className="mr-2 h-4 w-4" /> Request Shift
+              </Button>
+            </SheetFooter>
+          </SheetContent>
+        </Sheet>
       </DialogContent>
     </Dialog>
   )

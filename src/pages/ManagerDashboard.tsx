@@ -96,25 +96,24 @@ const ManagerDashboard = () => {
   useEffect(() => {
     const changes = supabase
       .channel('highlights-db-changes')
-      .on(
-        'postgres_changes',
+      .on('postgres_changes',
         { event: '*', schema: 'public', table: 'highlights' },
         (payload) => {
           console.log('Highlight change received!', payload);
-          toast.info("New alert status from Admin.");
-          
-          const changedDeptId = (payload.new as { department_id?: string })?.department_id;
-          
-          if (changedDeptId && changedDeptId === selectedDeptId) {
+          const newHighlight = payload.new as { department_id?: string, message?: string, is_active?: boolean };
+
+          if (newHighlight?.department_id === selectedDeptId) {
+            if(newHighlight.is_active) {
+                toast.warning("New Alert from Admin", {
+                    description: newHighlight.message,
+                });
+            }
             queryClient.invalidateQueries({ queryKey: ['highlight', selectedDeptId] });
           }
         }
       )
       .subscribe();
-
-    return () => {
-      supabase.removeChannel(changes);
-    };
+    return () => { supabase.removeChannel(changes); };
   }, [queryClient, selectedDeptId]);
   
   useEffect(() => {

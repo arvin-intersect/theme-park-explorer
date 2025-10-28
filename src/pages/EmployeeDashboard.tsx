@@ -1,9 +1,9 @@
 // FILE: src/pages/EmployeeDashboard.tsx
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { User, Calendar, Award, Check, X } from "lucide-react";
+import { User, Calendar, Award, Check, X, RefreshCw } from "lucide-react";
 import WorkforceNav from "@/components/WorkforceNav";
 import { toast } from "@/components/ui/sonner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -97,13 +97,22 @@ const EmployeeDashboard = () => {
       <WorkforceNav />
       <main className="container mx-auto px-4 py-8">
         <Card className="mb-8 p-6 bg-card/80 backdrop-blur-sm">
-            <h2 className="text-lg font-semibold mb-2">Select an Employee to View Dashboard</h2>
-            <Select onValueChange={setSelectedEmployeeId} value={selectedEmployeeId || ''}>
-                <SelectTrigger><SelectValue placeholder={isLoadingList ? "Loading..." : "Select an employee"} /></SelectTrigger>
-                <SelectContent>
-                    {employeeList?.map(emp => (<SelectItem key={emp.id} value={emp.id}>{emp.full_name}</SelectItem>))}
-                </SelectContent>
-            </Select>
+            <CardHeader className="p-0 mb-4">
+              <CardTitle>Employee View</CardTitle>
+              <CardDescription>Select an employee to view their dashboard or refresh their current data.</CardDescription>
+            </CardHeader>
+            <div className="flex w-full items-center gap-2">
+              <Select onValueChange={setSelectedEmployeeId} value={selectedEmployeeId || ''}>
+                  <SelectTrigger><SelectValue placeholder={isLoadingList ? "Loading..." : "Select an employee"} /></SelectTrigger>
+                  <SelectContent>
+                      {employeeList?.map(emp => (<SelectItem key={emp.id} value={emp.id}>{emp.full_name}</SelectItem>))}
+                  </SelectContent>
+              </Select>
+               <Button variant="outline" size="icon" onClick={() => refetch()} disabled={!selectedEmployeeId || isLoadingDetails}>
+                <RefreshCw className={`h-4 w-4 ${isLoadingDetails ? "animate-spin" : ""}`} />
+                <span className="sr-only">Refresh data</span>
+              </Button>
+            </div>
         </Card>
 
         {!selectedEmployeeId && (<div className="text-center text-muted-foreground mt-16"><p>Please select an employee.</p></div>)}

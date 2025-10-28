@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Megaphone } from "lucide-react";
-import { toast } from "sonner";
+import { toast, Toaster } from "sonner";
 
 const fetchDepartmentStats = async () => {
   const { data, error } = await supabase.rpc('get_department_stats');
@@ -27,6 +27,7 @@ const AdminDashboard = () => {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [isAlertDialogOpen, setIsAlertDialogOpen] = useState(false);
   const [selectedDeptForAlert, setSelectedDeptForAlert] = useState<{ id: string, name: string } | null>(null);
+  const [alertForDate, setAlertForDate] = useState<Date | null>(null);
   const [alertMessage, setAlertMessage] = useState("");
   const queryClient = useQueryClient();
 
@@ -40,8 +41,9 @@ const AdminDashboard = () => {
     setIsBreakdownOpen(true);
   };
 
-  const handleOpenAlertModal = (dept: { id: string, name: string }) => {
+  const handleOpenAlertModal = (dept: { id: string, name: string }, date: Date | null = null) => {
     setSelectedDeptForAlert(dept);
+    setAlertForDate(date);
     setIsAlertDialogOpen(true);
   };
 
@@ -51,12 +53,16 @@ const AdminDashboard = () => {
       return;
     }
     if (selectedDeptForAlert) {
+      const finalMessage = alertForDate
+        ? `[Alert for ${new Date(alertForDate).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}]: ${alertMessage}`
+        : alertMessage;
+
       const { data, error } = await supabase
         .from('highlights')
         .upsert(
           {
-            department_id: selectedDeptForAlert.id,
-            message: alertMessage,
+            department_id: selectedDeptForAlert.id, 
+            message: finalMessage,
             author: "Admin",
             is_active: true,
           },
@@ -73,6 +79,7 @@ const AdminDashboard = () => {
         toast.success(`Alert sent to ${selectedDeptForAlert.name} department.`);
         setAlertMessage("");
         setIsAlertDialogOpen(false);
+        setAlertForDate(null);
         queryClient.invalidateQueries({ queryKey: ['highlight', selectedDeptForAlert.id] });
       } else {
         toast.error("Operation sent, but no confirmation received. Check DB and console.");
@@ -144,7 +151,7 @@ const AdminDashboard = () => {
             isOpen={isBreakdownOpen}
             onOpenChange={setIsBreakdownOpen}
             date={selectedDate}
-            onAlertManager={(dept) => handleOpenAlertModal({id: dept.department_id, name: dept.department_name})}
+            onAlertManager={(dept, date) => handleOpenAlertModal({id: dept.department_id, name: dept.department_name}, date)}
         />
 
         <Dialog open={isAlertDialogOpen} onOpenChange={setIsAlertDialogOpen}>
