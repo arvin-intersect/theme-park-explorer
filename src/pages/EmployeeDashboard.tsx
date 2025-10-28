@@ -90,7 +90,11 @@ const EmployeeDashboard = () => {
   };
 
   const pendingShifts = employee?.shifts.filter(s => s.status === 'pending') || [];
-  const confirmedShifts = employee?.shifts.filter(s => s.status === 'confirmed') || [];
+  
+  // FIX: Filter for upcoming shifts only and sort them chronologically.
+  const upcomingConfirmedShifts = employee?.shifts
+    .filter(s => s.status === 'confirmed' && new Date(s.end_time) >= new Date())
+    .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime()) || [];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-workspace-light/20 to-primary/5">
@@ -159,7 +163,7 @@ const EmployeeDashboard = () => {
                 <div>
                   <h2 className="text-2xl font-bold mb-4 flex items-center gap-2"><Calendar /> Upcoming Shifts</h2>
                   <div className="space-y-4">
-                    {confirmedShifts.length > 0 ? confirmedShifts.map((shift) => (
+                    {upcomingConfirmedShifts.length > 0 ? upcomingConfirmedShifts.map((shift) => (
                       <Card key={shift.id} className="p-4">
                         <div className="flex items-center justify-between">
                           <div>

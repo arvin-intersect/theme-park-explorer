@@ -4,6 +4,11 @@ import { Card } from "@/components/ui/card";
 import { EmployeeWithDetails } from "@/types/database.types";
 
 const EmployeeSchedule = ({ employee }: { employee: EmployeeWithDetails }) => {
+  // FIX: Filter for upcoming shifts only and sort them chronologically.
+  const upcomingShifts = employee.shifts
+    ?.filter((shift) => new Date(shift.end_time) >= new Date())
+    .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
+
   return (
     <div className="space-y-4 p-2">
       <div className="grid grid-cols-2 gap-4">
@@ -20,19 +25,23 @@ const EmployeeSchedule = ({ employee }: { employee: EmployeeWithDetails }) => {
       <div>
         <h3 className="font-semibold mb-2">Upcoming Shifts</h3>
         <div className="space-y-2 max-h-48 overflow-y-auto">
-          {employee.shifts?.map((shift) => (
-            <Card key={shift.id} className="p-3">
-              <div className="flex justify-between items-center">
-                <div>
-                  <p className="font-medium">{format(new Date(shift.start_time), "EEEE, MMM d")}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {format(new Date(shift.start_time), "p")} - {format(new Date(shift.end_time), "p")}
-                  </p>
+          {upcomingShifts && upcomingShifts.length > 0 ? (
+            upcomingShifts.map((shift) => (
+              <Card key={shift.id} className="p-3">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <p className="font-medium">{format(new Date(shift.start_time), "EEEE, MMM d")}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {format(new Date(shift.start_time), "p")} - {format(new Date(shift.end_time), "p")}
+                    </p>
+                  </div>
+                  <Badge>{shift.zones?.name}</Badge>
                 </div>
-                <Badge>{shift.zones?.name}</Badge>
-              </div>
-            </Card>
-          ))}
+              </Card>
+            ))
+          ) : (
+            <p className="text-sm text-muted-foreground text-center py-4">No upcoming shifts scheduled.</p>
+          )}
         </div>
       </div>
 
