@@ -1,4 +1,4 @@
-// FILE: src/components/RosterDialog.tsx (REPLACE ENTIRE FILE)
+// FILE: src/components/RosterDialog.tsx
 import { useState, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { format, setHours, addHours } from 'date-fns';
@@ -14,7 +14,6 @@ import EmployeeSchedule from '@/components/EmployeeSchedule';
 import { Skeleton } from './ui/skeleton';
 import { toast } from 'sonner';
 import { UserPlus, UserX, Star, Ban } from 'lucide-react';
-import { generateProjectedShifts } from '@/lib/projection';
 
 interface RosterDialogProps {
   isOpen: boolean;
@@ -22,6 +21,35 @@ interface RosterDialogProps {
   day: { date: Date; summary: RosterSummary } | null;
   departmentId: string | null;
   zoneId: string | null;
+}
+
+const fetchProjectedShifts = async (employeeId: string | null): Promise<ProjectedShift[]> => {
+  if (!employeeId) return [];
+  const today = new Date();
+  const thirtyDaysFromNow = addHours(today, 24 * 30);
+
+  const { data, error } = await supabase.rpc('get_projected_employee_schedule', {
+    p_employee_id: employeeId,
+    p_start_date: format(today, 'yyyy-MM-dd'),
+    p_end_date: format(thirtyDaysFromNow, 'yyyy-MM-dd')
+  });
+
+  if (error) throw new Error(error.message);
+  
+  // De-duplicate shifts: only take the first one for any given day.
+  const uniqueShifts: ProjectedShift[] = [];
+  const seenDates = new Set<string>();
+
+  if (data) {
+    for (const shift of data) {
+      const shiftDay = format(new Date(shift.start_time), 'yyyy-MM-dd');
+      if (!seenDates.has(shiftDay)) {
+        uniqueShifts.push(shift);
+        seenDates.add(shiftDay);
+      }
+    }
+  }
+  return uniqueShifts;
 }
 
 const fetchEmployeeData = async (employeeId: string | null): Promise<EmployeeWithDetails | null> => {
@@ -48,6 +76,7 @@ const fetchEmployeeData = async (employeeId: string | null): Promise<EmployeeWit
   return data as unknown as EmployeeWithDetails;
 };
 
+// This function correctly gets who is already booked for the specific department
 const fetchRosterForDay = async (departmentId: string, date: Date) => {
     const { data, error } = await supabase.rpc('get_roster_for_day', {
         target_department_id: departmentId,
@@ -96,28 +125,9 @@ export function RosterDialog({ isOpen, onOpenChange, day, departmentId, zoneId }
 
   const { data: projectedShifts, isLoading: isLoadingProjectedShifts } = useQuery({
     queryKey: ['projectedShifts', detailEmployee?.id],
-    queryFn: () => {
-        if (!detailEmployee) return [];
-        const today = new Date();
-        const thirtyDaysFromNow = addHours(today, 24 * 30);
-        return generateProjectedShifts(detailEmployee.id, today, thirtyDaysFromNow);
-    },
+    queryFn: () => fetchProjectedShifts(detailEmployee!.id),
     enabled: !!detailEmployee
   });
-
-  // *** THIS IS THE FIX ***
-  // Filter the projected shifts to exclude the currently selected day.
-  const shiftsForSchedule = useMemo(() => {
-    if (!projectedShifts || !day?.date) {
-      return projectedShifts;
-    }
-    const selectedDateString = format(day.date, 'yyyy-MM-dd');
-    return projectedShifts.filter(shift => {
-      const shiftDateString = format(new Date(shift.start_time), 'yyyy-MM-dd');
-      return shiftDateString !== selectedDateString;
-    });
-  }, [projectedShifts, day?.date]);
-  // *** END OF FIX ***
 
   const { confirmed, pending } = useMemo(() => {
     const confirmed = shifts?.filter(s => s.status === 'confirmed' && s.profiles) || [];
@@ -143,6 +153,7 @@ export function RosterDialog({ isOpen, onOpenChange, day, departmentId, zoneId }
     
     if (error) { toast.error(`Operation failed: ${error.message}`); } 
     else {
+        // Invalidate all relevant queries to refresh the UI completely
         queryClient.invalidateQueries({ queryKey: ['rosterForDay'] });
         queryClient.invalidateQueries({ queryKey: ['availableEmployees'] });
         queryClient.invalidateQueries({ queryKey: ['rosterSummary'] });
@@ -206,7 +217,7 @@ export function RosterDialog({ isOpen, onOpenChange, day, departmentId, zoneId }
             </SheetHeader>
             <div className="py-4">
               {(isLoadingEmployeeDetails || isLoadingProjectedShifts) && <Skeleton className="h-64 w-full" />}
-              {employeeDetails && shiftsForSchedule && <EmployeeSchedule employee={employeeDetails} shifts={shiftsForSchedule} />}
+              {employeeDetails && projectedShifts && <EmployeeSchedule employee={employeeDetails} shifts={projectedShifts} />}
             </div>
             <SheetFooter>
               <Button onClick={() => {
