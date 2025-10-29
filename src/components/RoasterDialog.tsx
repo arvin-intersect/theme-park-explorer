@@ -23,7 +23,7 @@ interface RosterDialogProps {
   zoneId: string | null;
 }
 
-const fetchProjectedShifts = async (employeeId: string | null): Promise<ProjectedShift[]> => {
+const fetchProjectedShifts = async (employeeId: string | null, dateToExclude: Date | null): Promise<ProjectedShift[]> => {
   if (!employeeId) return [];
   const today = new Date();
   const thirtyDaysFromNow = addHours(today, 24 * 30);
@@ -40,10 +40,17 @@ const fetchProjectedShifts = async (employeeId: string | null): Promise<Projecte
   const uniqueShifts: ProjectedShift[] = [];
   const seenDates = new Set<string>();
 
+  const excludeDateString = dateToExclude ? format(dateToExclude, 'yyyy-MM-dd') : null;
+
   if (data) {
     for (const shift of data) {
       const shiftDay = format(new Date(shift.start_time), 'yyyy-MM-dd');
       if (!seenDates.has(shiftDay)) {
+        // If the current shift's day is the one we're trying to book, skip it
+        if (shiftDay === excludeDateString) {
+          continue;
+        }
+
         uniqueShifts.push(shift);
         seenDates.add(shiftDay);
       }
@@ -125,8 +132,8 @@ export function RosterDialog({ isOpen, onOpenChange, day, departmentId, zoneId }
 
   const { data: projectedShifts, isLoading: isLoadingProjectedShifts } = useQuery({
     queryKey: ['projectedShifts', detailEmployee?.id],
-    queryFn: () => fetchProjectedShifts(detailEmployee!.id),
-    enabled: !!detailEmployee
+    queryFn: () => fetchProjectedShifts(detailEmployee!.id, day?.date ?? null),
+    enabled: !!detailEmployee,
   });
 
   const { confirmed, pending } = useMemo(() => {
