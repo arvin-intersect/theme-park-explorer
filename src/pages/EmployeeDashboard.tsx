@@ -67,10 +67,22 @@ const fetchProjectedShiftsWithStatus = async (employeeId: string | null) => {
   });
 
   if (error) throw new Error(error.message);
-  // NOTE: For this demo, we are treating all projected shifts as either 'pending' or 'confirmed'
-  // based on their original status. A real app would have more complex logic.
-  const pending = data?.filter(s => s.status === 'pending') || [];
-  const confirmed = data?.filter(s => s.status === 'confirmed') || [];
+  
+  // De-duplicate shifts: only take the first one for any given day.
+  const uniqueShifts = [];
+  const seenDates = new Set();
+  if (data) {
+    for (const shift of data) {
+      const shiftDay = format(new Date(shift.start_time), 'yyyy-MM-dd');
+      if (!seenDates.has(shiftDay)) {
+        uniqueShifts.push(shift);
+        seenDates.add(shiftDay);
+      }
+    }
+  }
+
+  const pending = uniqueShifts.filter(s => s.status === 'pending');
+  const confirmed = uniqueShifts.filter(s => s.status === 'confirmed');
   return { pending, confirmed };
 }
 

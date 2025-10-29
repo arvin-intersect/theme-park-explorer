@@ -35,7 +35,21 @@ const fetchProjectedShifts = async (employeeId: string | null): Promise<Projecte
   });
 
   if (error) throw new Error(error.message);
-  return data || [];
+  
+  // De-duplicate shifts: only take the first one for any given day.
+  const uniqueShifts: ProjectedShift[] = [];
+  const seenDates = new Set<string>();
+
+  if (data) {
+    for (const shift of data) {
+      const shiftDay = format(new Date(shift.start_time), 'yyyy-MM-dd');
+      if (!seenDates.has(shiftDay)) {
+        uniqueShifts.push(shift);
+        seenDates.add(shiftDay);
+      }
+    }
+  }
+  return uniqueShifts;
 }
 
 const fetchEmployeeData = async (employeeId: string | null): Promise<EmployeeWithDetails | null> => {
