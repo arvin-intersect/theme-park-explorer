@@ -25,6 +25,15 @@ export interface Shift {
   status: ShiftStatus;
 }
 
+// NEW: This type will be returned by our projected schedule function
+export interface ProjectedShift {
+  id: string;
+  start_time: string;
+  end_time: string;
+  status: ShiftStatus;
+  zones: { name: string } | null;
+}
+
 // For the Roster Dialog to show who is on a shift
 export interface ShiftWithEmployee extends Shift {
   profiles: {
@@ -92,17 +101,3 @@ export type RosterSummary = {
   department_id?: string;
   department_name?: string;
 };
-
-export interface EmployeeWithDetails extends Employee {
-  shifts: Shift[];
-  employee_skills: { skills: Skill }[];
-  employee_certifications: { certifications: Certification }[];
-  performance_reviews: PerformanceReview[];
-}
-
-export interface Highlights {
-  visitors: number;
-  revenue: number;
-  spend: number;
-  profit: number;
-}

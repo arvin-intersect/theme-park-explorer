@@ -1,9 +1,10 @@
+// FILE: src/components/EmployeeSchedule.tsx
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { EmployeeWithDetails } from "@/types/database.types";
+import { EmployeeWithDetails, ProjectedShift } from "@/types/database.types";
 
-const EmployeeSchedule = ({ employee }: { employee: EmployeeWithDetails }) => {
+const EmployeeSchedule = ({ employee, shifts }: { employee: EmployeeWithDetails, shifts: ProjectedShift[] }) => {
   return (
     <div className="space-y-4 p-2">
       <div className="grid grid-cols-2 gap-4">
@@ -20,7 +21,7 @@ const EmployeeSchedule = ({ employee }: { employee: EmployeeWithDetails }) => {
       <div>
         <h3 className="font-semibold mb-2">Upcoming Shifts</h3>
         <div className="space-y-2 max-h-48 overflow-y-auto">
-          {employee.shifts?.map((shift) => (
+          {shifts?.map((shift) => (
             <Card key={shift.id} className="p-3">
               <div className="flex justify-between items-center">
                 <div>

@@ -9,7 +9,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFo
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Card, CardHeader, CardTitle } from '@/components/ui/card';
-import { RosterSummary, SuggestedEmployee, ShiftWithEmployee, EmployeeWithDetails } from '@/types/database.types';
+import { RosterSummary, SuggestedEmployee, ShiftWithEmployee, EmployeeWithDetails, ProjectedShift } from '@/types/database.types';
 import EmployeeSchedule from '@/components/EmployeeSchedule';
 import { Skeleton } from './ui/skeleton';
 import { toast } from 'sonner';
@@ -23,6 +23,21 @@ interface RosterDialogProps {
   zoneId: string | null;
 }
 
+const fetchProjectedShifts = async (employeeId: string | null): Promise<ProjectedShift[]> => {
+  if (!employeeId) return [];
+  const today = new Date();
+  const thirtyDaysFromNow = addHours(today, 24 * 30);
+
+  const { data, error } = await supabase.rpc('get_projected_employee_schedule', {
+    p_employee_id: employeeId,
+    p_start_date: format(today, 'yyyy-MM-dd'),
+    p_end_date: format(thirtyDaysFromNow, 'yyyy-MM-dd')
+  });
+
+  if (error) throw new Error(error.message);
+  return data || [];
+}
+
 const fetchEmployeeData = async (employeeId: string | null): Promise<EmployeeWithDetails | null> => {
   if (!employeeId) return null;
 
@@ -31,7 +46,6 @@ const fetchEmployeeData = async (employeeId: string | null): Promise<EmployeeWit
     .select(`
       id, full_name, role,
       departments (name),
-      shifts ( id, start_time, end_time, status, zones (name) ),
       employee_skills ( skills (name) ),
       employee_certifications ( certifications (name) ),
       performance_reviews ( attendance_score, reliability_score, performance_rating )
@@ -44,10 +58,6 @@ const fetchEmployeeData = async (employeeId: string | null): Promise<EmployeeWit
   if (data) {
     // @ts-ignore
     data.departments = Array.isArray(data.departments) ? data.departments[0] : data.departments;
-    data.shifts?.forEach(shift => { 
-      // @ts-ignore
-      shift.zones = Array.isArray(shift.zones) ? shift.zones[0] : shift.zones;
-    });
   }
   return data as unknown as EmployeeWithDetails;
 };
@@ -65,7 +75,6 @@ const fetchRosterForDay = async (departmentId: string, date: Date) => {
     })) as ShiftWithEmployee[];
 };
 
-// <<< THIS IS THE FIX: A new function that calls our simple SQL >>>
 const fetchAvailableEmployees = async (date: Date): Promise<SuggestedEmployee[]> => {
     const { data, error } = await supabase.rpc('get_available_employees_for_day', {
         target_date: format(date, 'yyyy-MM-dd')
@@ -88,7 +97,6 @@ export function RosterDialog({ isOpen, onOpenChange, day, departmentId, zoneId }
     enabled: queryEnabled,
   });
 
-  // <<< THIS IS THE FIX: Call the simple, correct suggestion function >>>
   const { data: suggestions, isLoading: isLoadingSuggestions } = useQuery({
     queryKey: ['availableEmployees', day?.date],
     queryFn: () => fetchAvailableEmployees(day!.date),
@@ -99,6 +107,12 @@ export function RosterDialog({ isOpen, onOpenChange, day, departmentId, zoneId }
     queryKey: ['employeeData', detailEmployee?.id],
     queryFn: () => fetchEmployeeData(detailEmployee!.id),
     enabled: !!detailEmployee,
+  });
+
+  const { data: projectedShifts, isLoading: isLoadingProjectedShifts } = useQuery({
+    queryKey: ['projectedShifts', detailEmployee?.id],
+    queryFn: () => fetchProjectedShifts(detailEmployee!.id),
+    enabled: !!detailEmployee
   });
 
   const { confirmed, pending } = useMemo(() => {
@@ -173,7 +187,6 @@ export function RosterDialog({ isOpen, onOpenChange, day, departmentId, zoneId }
             }
           </TabsContent>
 
-          {/* Pending and Confirmed tabs remain the same */}
           <TabsContent value="pending" className="mt-4 max-h-[300px] overflow-y-auto">
              {isLoadingShifts ? <Skeleton className="h-40 w-full" /> : (pending && pending.length > 0) ? pending.map(shift => ( <EmployeeRow key={shift.id} buttons={<Button size="sm" variant="destructive" onClick={() => handleRosterAction('delete', shift.profiles!.id, shift.id)}><Ban className="mr-2 h-4 w-4" /> Cancel</Button>}> <Avatar><AvatarFallback>{shift.profiles!.full_name.charAt(0)}</AvatarFallback></Avatar> <div><p className="font-semibold">{shift.profiles!.full_name}</p><p className="text-xs text-muted-foreground">{shift.profiles!.role}</p></div> </EmployeeRow> )) : <div className="text-center text-sm text-muted-foreground pt-8">No pending shift requests.</div> }
           </TabsContent>
@@ -189,8 +202,8 @@ export function RosterDialog({ isOpen, onOpenChange, day, departmentId, zoneId }
               <SheetDescription>{detailEmployee?.role}</SheetDescription>
             </SheetHeader>
             <div className="py-4">
-              {isLoadingEmployeeDetails && <Skeleton className="h-64 w-full" />}
-              {employeeDetails && <EmployeeSchedule employee={employeeDetails} />}
+              {(isLoadingEmployeeDetails || isLoadingProjectedShifts) && <Skeleton className="h-64 w-full" />}
+              {employeeDetails && projectedShifts && <EmployeeSchedule employee={employeeDetails} shifts={projectedShifts} />}
             </div>
             <SheetFooter>
               <Button onClick={() => {
