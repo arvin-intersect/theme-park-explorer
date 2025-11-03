@@ -7,7 +7,7 @@ import RosterCalendar from "@/components/RosterCalendar";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowLeft, Users, DollarSign, Star } from "lucide-react";
+import { Users, DollarSign, Star, LayoutDashboard } from "lucide-react"; // Removed ArrowLeft, added LayoutDashboard
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/components/ui/sonner";
 
@@ -71,7 +71,7 @@ const ParkZone = () => {
         <div className="flex flex-col items-center justify-center pt-24">
           <h1 className="text-4xl font-bold mb-4">Zone Not Found</h1>
           <p className="text-muted-foreground mb-6">Could not load the details for this park zone.</p>
-          <Button onClick={() => navigate("/")}>Back to Park Map</Button>
+          <Button onClick={() => navigate("/admin")}>Go to Admin Dashboard</Button> {/* Changed destination */}
         </div>
       </div>
     );
@@ -81,9 +81,9 @@ const ParkZone = () => {
     <div className="min-h-screen bg-gradient-to-br from-background to-primary/5">
       <WorkforceNav />
       <main className="container mx-auto px-4 py-8">
-        <Button variant="ghost" onClick={() => navigate("/")} className="gap-2 mb-6">
-          <ArrowLeft className="w-4 h-4" />
-          Back to Park Map
+        <Button variant="ghost" onClick={() => navigate("/admin")} className="gap-2 mb-6"> {/* Changed destination */}
+          <LayoutDashboard className="w-4 h-4" /> {/* Changed icon to LayoutDashboard */}
+          Back to Admin Dashboard
         </Button>
         <div className="mb-8">
           <h1 className="text-4xl font-bold mb-2 flex items-center gap-4">

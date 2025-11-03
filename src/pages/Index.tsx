@@ -1,21 +1,12 @@
-import parkMap from "@/assets/park-map.png";
-import ZoneHotspot from "@/components/ZoneHotspot";
 import WorkforceNav from "@/components/WorkforceNav";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
-import { TrendingUp, Users, DollarSign, TrendingDown } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { TrendingUp, Users, DollarSign, TrendingDown, Shield, LayoutDashboard, User } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabaseClient";
-import { Zone } from "@/types/database.types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
-
-const fetchZones = async (): Promise<Zone[]> => {
-  const { data, error } = await supabase.from("zones").select("*");
-  if (error) throw new Error(error.message);
-  return data || [];
-};
 
 const fetchTodayHighlights = async () => {
   // FIX: Use the same pattern logic as ZoneHotspot to get today's projection
@@ -50,10 +41,7 @@ const fetchTodayHighlights = async () => {
 
 const Index = () => {
   const navigate = useNavigate();
-  const { data: zones, isLoading: isLoadingZones } = useQuery({
-    queryKey: ["zones"],
-    queryFn: fetchZones,
-  });
+  
   const { data: todayHighlights, isLoading: isLoadingHighlights } = useQuery({
     queryKey: ["todayHighlights"],
     queryFn: fetchTodayHighlights,
@@ -63,8 +51,16 @@ const Index = () => {
     <div className="min-h-screen bg-gradient-to-br from-background via-primary/10 to-secondary/10">
       <WorkforceNav />
       <main className="container mx-auto px-4 py-12">
-        <div className="animate-slide-in">
-          <Card className="bg-card/80 backdrop-blur-sm border-2 border-primary/20 shadow-lg">
+        <div className="text-center mb-12">
+          <h1 className="text-5xl font-extrabold text-foreground tracking-tight mb-4 animate-slide-in">
+            Welcome to Peakville Park CRM
+          </h1>
+          <p className="text-xl text-muted-foreground max-w-2xl mx-auto animate-zoom-in">
+            Your central hub for workforce management, operational insights, and park performance at Peakville Amusement Park.
+          </p>
+        </div>
+        <div className="mb-12 animate-slide-in">
+          <Card className="bg-card/80 backdrop-blur-sm border-2 border-primary/20 shadow-lg max-w-4xl mx-auto">
             <CardHeader>
               <CardTitle className="text-center text-2xl font-bold text-foreground">
                 Daily Projections
@@ -116,25 +112,50 @@ const Index = () => {
             </CardContent>
           </Card>
         </div>
-        <div className="animate-zoom-in mt-12">
-          <div className="relative rounded-3xl overflow-hidden shadow-2xl border-4 border-primary/20">
-            <img src={parkMap} alt="Peakville Amusement Park Map" className="w-full h-auto" />
-            <div className="absolute inset-0">
-              {isLoadingZones ? (
-                <div className="w-full h-full bg-black/10 backdrop-blur-sm flex items-center justify-center text-white font-bold">
-                  Loading Park Zones...
-                </div>
-              ) : (
-                zones?.map((zone) => <ZoneHotspot key={zone.id} zone={zone} />)
-              )}
-            </div>
-            <div className="absolute top-4 right-4 animate-slide-in">
-              <Button onClick={() => navigate("/admin")} className="gap-2 shadow-lg">
-                <TrendingUp className="w-4 h-4" />
-                Overall Metrics
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12 animate-zoom-in">
+          <Card className="text-center group hover:shadow-xl transition-shadow duration-300">
+            <CardHeader className="flex flex-col items-center">
+              <Shield className="w-12 h-12 text-blue-600 group-hover:text-blue-800 transition-colors duration-300 mb-2" />
+              <CardTitle>Admin Dashboard</CardTitle>
+              <CardDescription>
+                Manage park-wide settings and monitor overall health.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button onClick={() => navigate("/admin")} className="w-full">
+                Go to Admin
               </Button>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
+          <Card className="text-center group hover:shadow-xl transition-shadow duration-300">
+            <CardHeader className="flex flex-col items-center">
+              <LayoutDashboard className="w-12 h-12 text-teal-600 group-hover:text-teal-800 transition-colors duration-300 mb-2" />
+              <CardTitle>Manager Dashboard</CardTitle>
+              <CardDescription>
+                Oversee departmental rosters and team performance.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button onClick={() => navigate("/manager")} variant="secondary" className="w-full">
+                Go to Manager
+              </Button>
+            </CardContent>
+          </Card>
+          <Card className="text-center group hover:shadow-xl transition-shadow duration-300">
+            <CardHeader className="flex flex-col items-center">
+              <User className="w-12 h-12 text-purple-600 group-hover:text-purple-800 transition-colors duration-300 mb-2" />
+              <CardTitle>Employee Portal</CardTitle>
+              <CardDescription>
+                View your schedule, requests, and personal info.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button onClick={() => navigate("/employee")} variant="outline" className="w-full">
+                Go to Employee
+              </Button>
+            </CardContent>
+          </Card>
         </div>
       </main>
       <footer className="mt-12 py-8 border-t border-border bg-card/50 backdrop-blur-sm">

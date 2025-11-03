@@ -7,7 +7,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Shield, Users, User, Map, ChevronDown } from "lucide-react";
+import { Shield, Users, User, ChevronDown, Home } from "lucide-react"; // Changed Map to Home for the new root page
 
 const WorkforceNav = () => {
   const navigate = useNavigate();
@@ -55,8 +55,8 @@ const WorkforceNav = () => {
               onClick={() => navigate("/")}
               className={location.pathname === "/" ? "bg-primary/10 text-primary" : ""}
             >
-              <Map className="w-4 h-4 mr-2" />
-              Park Map
+              <Home className="w-4 h-4 mr-2" /> {/* Changed icon to Home */}
+              Home
             </Button>
             <Button
               variant="ghost"
