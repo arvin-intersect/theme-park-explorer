@@ -23,18 +23,18 @@ export interface Shift {
   end_time: string; // ISO string
   zones: { name: string } | null;
   status: ShiftStatus;
-  department_name?: string; // <--- ADDED THIS TO THE BASE SHIFT TYPE
+  department_name?: string; // <--- This property is correctly here for enrichment
 }
 
-// NEW: This type will be returned by our projected schedule function
-// Ensure it also has department_name for enrichment
+// NOTE: ProjectedShift is now less critical as we're fetching actual shifts via RPC
+// but keeping it for consistency if other parts of the app rely on it.
 export interface ProjectedShift {
   id: string;
   start_time: string;
   end_time: string;
   status: ShiftStatus;
   zones: { name: string } | null;
-  department_name?: string; // <--- ENSURE THIS IS PRESENT
+  department_name?: string; 
 }
 
 // For the Roster Dialog to show who is on a shift
@@ -46,7 +46,6 @@ export interface ShiftWithEmployee extends Shift {
   } | null;
 }
 
-// For the RPC function get_suggested_employees
 export interface SuggestedEmployee {
   id: string;
   full_name: string;
@@ -83,8 +82,7 @@ export interface Employee extends Profile {
 }
 
 export interface EmployeeWithDetails extends Employee {
-  // We remove the shifts directly here, as they will be fetched by fetchProjectedShiftsWithStatus
-  // shifts: Shift[]; 
+  shifts: Shift[]; // <--- REINSTATED THIS, as your fetchEmployeeData loads shifts here
   employee_skills: { skills: Skill }[];
   employee_certifications: { certifications: Certification }[];
   performance_reviews: PerformanceReview[];
