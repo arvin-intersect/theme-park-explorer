@@ -23,16 +23,18 @@ export interface Shift {
   end_time: string; // ISO string
   zones: { name: string } | null;
   status: ShiftStatus;
+  department_name?: string; // <--- ADDED THIS LINE TO RESOLVE THE ERROR
 }
 
 // NEW: This type will be returned by our projected schedule function
+// (Note: This interface is becoming less critical as we're now directly fetching `Shift` and enriching it)
 export interface ProjectedShift {
   id: string;
   start_time: string;
   end_time: string;
   status: ShiftStatus;
   zones: { name: string } | null;
-  department_name?: string; // <--- ADDED THIS LINE
+  department_name?: string; 
 }
 
 // For the Roster Dialog to show who is on a shift
@@ -81,7 +83,7 @@ export interface Employee extends Profile {
 }
 
 export interface EmployeeWithDetails extends Employee {
-  shifts: Shift[];
+  shifts: Shift[]; // Now 'Shift' includes 'department_name'
   employee_skills: { skills: Skill }[];
   employee_certifications: { certifications: Certification }[];
   performance_reviews: PerformanceReview[];
