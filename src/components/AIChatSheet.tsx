@@ -39,11 +39,13 @@ const AIChatSheet = ({ isOpen, onOpenChange }: { isOpen: boolean; onOpenChange: 
 
     const addMessage = useCallback((content: string, isUser: boolean, vizData?: any, isError?: boolean, isLoading?: boolean) => {
         const newMessage: Message = { id: Date.now().toString(), content, isUser, vizData, isError, isLoading };
+        console.log('Adding message:', { id: newMessage.id, content: content.substring(0, 50), isUser, isLoading });
         setMessages((prev) => [...prev, newMessage]);
         return newMessage;
     }, []);
 
     const updateMessage = useCallback((id: string, updates: Partial<Message>) => {
+        console.log('Updating message:', { id, updates: { ...updates, content: updates.content?.substring(0, 50) } });
         setMessages((prev) =>
             prev.map((msg) => (msg.id === id ? { ...msg, ...updates } : msg))
         );
@@ -231,11 +233,13 @@ const AIChatSheet = ({ isOpen, onOpenChange }: { isOpen: boolean; onOpenChange: 
         const question = questionInput.trim();
         if (!question) return;
 
-        addMessage(question, true);
+        // Add user message
+        const userMessage = addMessage(question, true);
         setQuestionInput('');
         setIsLoading(true);
 
-        const loadingMsg = addMessage('', false, undefined, false, true);
+        // Add loading message for AI response
+        const loadingMsg = addMessage('Thinking...', false, undefined, false, true);
 
         try {
             const response = await fetch(API_URL, {
@@ -251,19 +255,20 @@ const AIChatSheet = ({ isOpen, onOpenChange }: { isOpen: boolean; onOpenChange: 
 
             const data = await response.json();
 
-            // ✅ FIX: Update message with content AND vizData together
+            // Update the loading message with the actual response
             updateMessage(loadingMsg.id, { 
                 isLoading: false, 
                 content: data.answer,
-                vizData: data.visualization  // Add vizData to the message
+                vizData: data.visualization
             });
 
-            // ✅ Now create the chart after the DOM has updated
+            // Create chart if visualization data exists
             if (data.visualization) {
-                // Use setTimeout to ensure DOM has updated with vizData
                 setTimeout(() => {
                     const chartWrapper = document.getElementById(`chart-wrapper-${loadingMsg.id}`);
                     if (chartWrapper) {
+                        // Clear any existing canvas first
+                        chartWrapper.innerHTML = '';
                         const chartCanvas = document.createElement('canvas');
                         chartCanvas.className = `w-full h-full`;
                         chartWrapper.appendChild(chartCanvas);
@@ -271,7 +276,7 @@ const AIChatSheet = ({ isOpen, onOpenChange }: { isOpen: boolean; onOpenChange: 
                     } else {
                         console.error("Chart wrapper not found for message:", loadingMsg.id);
                     }
-                }, 0);
+                }, 100); // Increased timeout slightly for reliability
             }
         } catch (error: any) {
             updateMessage(loadingMsg.id, { 
@@ -281,7 +286,7 @@ const AIChatSheet = ({ isOpen, onOpenChange }: { isOpen: boolean; onOpenChange: 
             });
         } finally {
             setIsLoading(false);
-            scrollToBottom();
+            setTimeout(scrollToBottom, 150); // Delay scroll to ensure DOM is updated
         }
     };
 
