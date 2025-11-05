@@ -8,7 +8,7 @@ import WorkforceNav from "@/components/WorkforceNav";
 import { toast } from "@/components/ui/sonner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabaseClient";
-import { EmployeeWithDetails } from "@/types/database.types";
+import { EmployeeWithDetails, ProjectedShift, Department, Zone } from "@/types/database.types"; // Import Department and Zone
 import { Skeleton } from "@/components/ui/skeleton";
 import { format, formatDistanceToNow } from "date-fns";
 import {
@@ -53,7 +53,23 @@ const fetchEmployeeData = async (employeeId: string | null): Promise<EmployeeWit
   return data as unknown as EmployeeWithDetails;
 };
 
-const fetchProjectedShiftsWithStatus = async (employeeId: string | null) => {
+// --- START ADDITION / MODIFICATION ---
+// A pragmatic map to link zone names to department names for demo purposes.
+// In a real application, the `zones` table would typically have a `department_id` foreign key.
+const ZONE_TO_DEPARTMENT_MAP: { [zoneName: string]: string } = {
+  "Tundra Peaks": "Rides & Attractions",
+  "Gala Galaxy": "Rides & Attractions",
+  "Frontier Town": "Rides & Attractions",
+  "Buccaneer's Wharf": "Rides & Attractions",
+  "Kiddie Kingdom": "Rides & Attractions",
+  "Mystic Forest": "Rides & Attractions",
+  "Dino Valley": "Rides & Attractions",
+  // Add more specific mappings here if other zone types existed (e.g., "Food Court": "Food Services")
+  // For the purpose of this demo, all zones are assumed to be under "Rides & Attractions"
+  // You might extend this map if your mock data implies other zone-department relationships.
+};
+
+const fetchProjectedShiftsWithStatus = async (employeeId: string | null): Promise<{ pending: ProjectedShift[], confirmed: ProjectedShift[] }> => {
   if (!employeeId) return { pending: [], confirmed: [] };
 
   const today = new Date();
@@ -69,10 +85,10 @@ const fetchProjectedShiftsWithStatus = async (employeeId: string | null) => {
   if (error) throw new Error(error.message);
   
   // De-duplicate shifts: only take the first one for any given day.
-  const uniqueShifts = [];
-  const seenDates = new Set();
+  const uniqueShifts: ProjectedShift[] = [];
+  const seenDates = new Set<string>();
   if (data) {
-    for (const shift of data) {
+    for (const shift of data as ProjectedShift[]) {
       const shiftDay = format(new Date(shift.start_time), 'yyyy-MM-dd');
       if (!seenDates.has(shiftDay)) {
         uniqueShifts.push(shift);
@@ -81,10 +97,17 @@ const fetchProjectedShiftsWithStatus = async (employeeId: string | null) => {
     }
   }
 
-  const pending = uniqueShifts.filter(s => s.status === 'pending');
-  const confirmed = uniqueShifts.filter(s => s.status === 'confirmed');
+  // Enrich shifts with department name using the client-side map
+  const enrichedShifts: ProjectedShift[] = uniqueShifts.map((shift) => {
+    const departmentName = shift.zones?.name ? ZONE_TO_DEPARTMENT_MAP[shift.zones.name] : undefined;
+    return { ...shift, department_name: departmentName };
+  });
+
+  const pending = enrichedShifts.filter(s => s.status === 'pending');
+  const confirmed = enrichedShifts.filter(s => s.status === 'confirmed');
   return { pending, confirmed };
 }
+// --- END ADDITION / MODIFICATION ---
 
 const EmployeeDashboard = () => {
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(null);
@@ -170,6 +193,13 @@ const EmployeeDashboard = () => {
                                     <p className="text-sm text-muted-foreground">
                                       {format(new Date(shift.start_time), "p")} - {format(new Date(shift.end_time), "p")}
                                     </p>
+                                    {/* --- START MODIFICATION --- */}
+                                    {shift.department_name && (
+                                        <p className="text-xs text-muted-foreground text-left">
+                                            Department: {shift.department_name}
+                                        </p>
+                                    )}
+                                    {/* --- END MODIFICATION --- */}
                                 </div>
                                 <div className="flex gap-2">
                                     <Button size="icon" variant="outline" className="h-8 w-8 text-success" onClick={() => handleShiftResponse(shift.id, 'confirmed')}><Check className="w-4 h-4"/></Button>

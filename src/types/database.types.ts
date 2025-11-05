@@ -32,6 +32,7 @@ export interface ProjectedShift {
   end_time: string;
   status: ShiftStatus;
   zones: { name: string } | null;
+  department_name?: string; // <--- ADDED THIS LINE
 }
 
 // For the Roster Dialog to show who is on a shift
