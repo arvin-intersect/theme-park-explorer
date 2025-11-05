@@ -47,8 +47,8 @@ const fetchEmployeeList = async () => {
   return data;
 };
 
-// --- RESTORED & MODIFIED fetchEmployeeData FUNCTION ---
-// This version of fetchEmployeeData directly fetches shifts and enriches them.
+// --- REINSTATED & MODIFIED fetchEmployeeData FUNCTION ---
+// This version of fetchEmployeeData directly fetches shifts and enriches them, as per your original working code.
 const fetchEmployeeData = async (employeeId: string | null): Promise<EmployeeWithDetails | null> => {
   if (!employeeId) return null;
 
@@ -82,9 +82,7 @@ const fetchEmployeeData = async (employeeId: string | null): Promise<EmployeeWit
   }
   return data as unknown as EmployeeWithDetails;
 };
-// --- END RESTORED & MODIFIED fetchEmployeeData FUNCTION ---
-
-// Removed fetchProjectedShiftsWithStatus as its logic is now within fetchEmployeeData.
+// --- END REINSTATED & MODIFIED fetchEmployeeData FUNCTION ---
 
 const EmployeeDashboard = () => {
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(null);
@@ -95,20 +93,15 @@ const EmployeeDashboard = () => {
     queryFn: fetchEmployeeList,
   });
 
-  // This query now fetches employee details AND all their shifts.
+  // This query now fetches employee details AND all their shifts, enriched with department_name.
   const { data: employee, isLoading: isLoadingDetails, refetch } = useQuery({
     queryKey: ['employeeData', selectedEmployeeId],
     queryFn: () => fetchEmployeeData(selectedEmployeeId),
     enabled: !!selectedEmployeeId,
   });
 
+  // --- MODIFIED handleShiftResponse FUNCTION for proper persistence and feedback ---
   const handleShiftResponse = async (shiftId: string, newStatus: 'confirmed' | 'rejected') => {
-    // In a real application, you would update the shift's status in the database
-    // For this demo, we'll just optimistically refetch and show a warning toast.
-    toast.warning(`Shift ${newStatus}. (This is a demo action. Status change not persisted in mock setup.)`);
-
-    // In a real app, you'd do:
-    /*
     const { error } = await supabase
       .from('shifts')
       .update({ status: newStatus })
@@ -116,21 +109,19 @@ const EmployeeDashboard = () => {
 
     if (error) {
       toast.error(`Error responding to shift: ${error.message}`);
+      console.error("Failed to update shift status:", error);
     } else {
-      toast.success(`Shift ${newStatus}.`);
+      toast.success(`Shift request ${newStatus}.`);
       refetch(); // Refetch this employee's data to update the UI
       queryClient.invalidateQueries({ queryKey: ['rosterSummary'] }); // Invalidate calendar data for manager/admin to reflect change
     }
-    */
-   refetch(); // For demo, just refetch
-   queryClient.invalidateQueries({ queryKey: ['rosterSummary'] });
   };
+  // --- END MODIFIED handleShiftResponse FUNCTION ---
 
   // Filter for pending shifts (these will have department_name thanks to fetchEmployeeData)
   const pendingShifts = employee?.shifts.filter(s => s.status === 'pending') || [];
   
   // Filter for upcoming confirmed shifts only and sort them chronologically.
-  // These will also have department_name, but we won't display it below.
   const upcomingConfirmedShifts = employee?.shifts
     .filter(s => s.status === 'confirmed' && new Date(s.end_time) >= new Date())
     .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime()) || [];
@@ -207,14 +198,14 @@ const EmployeeDashboard = () => {
                 <div>
                   <h2 className="text-2xl font-bold mb-4 flex items-center gap-2"><Calendar /> Upcoming Shifts</h2>
                   <div className="space-y-4">
-                    {/* --- START "Upcoming Shifts" (retains simpler display without department_name) --- */}
+                    {/* --- START "Upcoming Shifts" (retains simpler display without department_name, as per your preference) --- */}
                     {upcomingConfirmedShifts.length > 0 ? upcomingConfirmedShifts.map((shift) => (
                       <Card key={shift.id} className="p-4">
                         <div className="flex items-center justify-between">
                           <div>
                             <p className="font-bold">{format(new Date(shift.start_time), "EEEE, MMM d")}</p>
                             <p className="text-sm text-muted-foreground">{shift.zones?.name || 'General'}</p>
-                            {/* The department_name is explicitly NOT shown here for confirmed shifts */}
+                            {/* The department_name is intentionally NOT displayed here for confirmed shifts */}
                           </div>
                           <Badge>{formatDistanceToNow(new Date(shift.start_time), { addSuffix: true })}</Badge>
                         </div>

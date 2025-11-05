@@ -26,8 +26,8 @@ export interface Shift {
   department_name?: string; // <--- This property is correctly here for enrichment
 }
 
-// NOTE: ProjectedShift is now less critical as we're fetching actual shifts via RPC
-// but keeping it for consistency if other parts of the app rely on it.
+// NOTE: ProjectedShift is now less critical as we're fetching actual shifts from profiles
+// Keeping it for consistency if other parts of the app rely on this specific RPC type.
 export interface ProjectedShift {
   id: string;
   start_time: string;
