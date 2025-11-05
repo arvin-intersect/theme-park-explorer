@@ -251,21 +251,34 @@ const AIChatSheet = ({ isOpen, onOpenChange }: { isOpen: boolean; onOpenChange: 
 
             const data = await response.json();
 
-            updateMessage(loadingMsg.id, { isLoading: false, content: data.answer });
+            // ✅ FIX: Update message with content AND vizData together
+            updateMessage(loadingMsg.id, { 
+                isLoading: false, 
+                content: data.answer,
+                vizData: data.visualization  // Add vizData to the message
+            });
 
+            // ✅ Now create the chart after the DOM has updated
             if (data.visualization) {
-                const chartWrapper = document.getElementById(`chart-wrapper-${loadingMsg.id}`);
-                if (chartWrapper) {
-                    const chartCanvas = document.createElement('canvas');
-                    chartCanvas.className = `w-full h-full`; // Tailwind classes
-                    chartWrapper.appendChild(chartCanvas);
-                    createChart(data.visualization, loadingMsg.id, chartCanvas);
-                } else {
-                    console.error("Chart wrapper not found for message:", loadingMsg.id);
-                }
+                // Use setTimeout to ensure DOM has updated with vizData
+                setTimeout(() => {
+                    const chartWrapper = document.getElementById(`chart-wrapper-${loadingMsg.id}`);
+                    if (chartWrapper) {
+                        const chartCanvas = document.createElement('canvas');
+                        chartCanvas.className = `w-full h-full`;
+                        chartWrapper.appendChild(chartCanvas);
+                        createChart(data.visualization, loadingMsg.id, chartCanvas);
+                    } else {
+                        console.error("Chart wrapper not found for message:", loadingMsg.id);
+                    }
+                }, 0);
             }
         } catch (error: any) {
-            updateMessage(loadingMsg.id, { isLoading: false, isError: true, content: `Error: ${error.message}` });
+            updateMessage(loadingMsg.id, { 
+                isLoading: false, 
+                isError: true, 
+                content: `Error: ${error.message}` 
+            });
         } finally {
             setIsLoading(false);
             scrollToBottom();
