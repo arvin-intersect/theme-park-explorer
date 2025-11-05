@@ -23,18 +23,20 @@ export interface Shift {
   end_time: string; // ISO string
   zones: { name: string } | null;
   status: ShiftStatus;
-  department_name?: string; // <--- This property is correctly here for enrichment
+  // department_name is not part of the core Shift interface coming directly from DB 'shifts' table,
+  // but it is added during client-side enrichment for ProjectedShift.
+  // Keeping it optional here to be flexible, but ProjectedShift will explicitly add it.
+  department_name?: string; 
 }
 
-// NOTE: ProjectedShift is now less critical as we're fetching actual shifts from profiles
-// Keeping it for consistency if other parts of the app rely on this specific RPC type.
+// THIS TYPE IS CRUCIAL FOR fetchProjectedShiftsWithStatus
 export interface ProjectedShift {
   id: string;
   start_time: string;
   end_time: string;
   status: ShiftStatus;
   zones: { name: string } | null;
-  department_name?: string; 
+  department_name?: string; // <--- THIS MUST BE PRESENT for client-side enrichment
 }
 
 // For the Roster Dialog to show who is on a shift
@@ -82,7 +84,11 @@ export interface Employee extends Profile {
 }
 
 export interface EmployeeWithDetails extends Employee {
-  shifts: Shift[]; // <--- REINSTATED THIS, as your fetchEmployeeData loads shifts here
+  // IMPORTANT: Shifts are NOT fetched directly with employee details in this setup.
+  // They are fetched separately by fetchProjectedShiftsWithStatus.
+  // This is to match your requested structure where upcoming shifts were originally fetched via RPC.
+  // If you later want them combined into one query, this interface would change.
+  // shifts: Shift[]; // Removed this line.
   employee_skills: { skills: Skill }[];
   employee_certifications: { certifications: Certification }[];
   performance_reviews: PerformanceReview[];

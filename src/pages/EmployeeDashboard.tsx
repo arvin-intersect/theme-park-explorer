@@ -8,7 +8,7 @@ import WorkforceNav from "@/components/WorkforceNav";
 import { toast } from "@/components/ui/sonner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabaseClient";
-import { EmployeeWithDetails, Shift, ShiftStatus } from "@/types/database.types"; 
+import { EmployeeWithDetails, ProjectedShift, Department, Zone, ShiftStatus } from "@/types/database.types"; 
 import { Skeleton } from "@/components/ui/skeleton";
 import { format, formatDistanceToNow } from "date-fns";
 import {
@@ -47,8 +47,7 @@ const fetchEmployeeList = async () => {
   return data;
 };
 
-// --- REINSTATED & MODIFIED fetchEmployeeData FUNCTION ---
-// This version of fetchEmployeeData directly fetches shifts and enriches them, as per your original working code.
+// --- RESTORED fetchEmployeeData to its original simple form (not fetching shifts) ---
 const fetchEmployeeData = async (employeeId: string | null): Promise<EmployeeWithDetails | null> => {
   if (!employeeId) return null;
 
@@ -57,7 +56,6 @@ const fetchEmployeeData = async (employeeId: string | null): Promise<EmployeeWit
     .select(`
       id, full_name, role,
       departments (name),
-      shifts ( id, start_time, end_time, status, zones (name) ),
       employee_skills ( skills (name) ),
       employee_certifications ( certifications (name) ),
       performance_reviews ( attendance_score, reliability_score, performance_rating )
@@ -68,21 +66,53 @@ const fetchEmployeeData = async (employeeId: string | null): Promise<EmployeeWit
   if (error) throw new Error(error.message);
   
   if (data) {
-    // @ts-ignore - Handle potential array type from Supabase for single relation
+    // @ts-ignore
     data.departments = Array.isArray(data.departments) ? data.departments[0] : data.departments;
-    
-    // Enrich shifts with department name and handle potential array type for nested relations
-    // @ts-ignore - data.shifts is already typed as Shift[] in EmployeeWithDetails
-    data.shifts = data.shifts?.map((shift: Shift) => { 
-      // @ts-ignore - Handle potential array type for nested zones relation
-      shift.zones = Array.isArray(shift.zones) ? shift.zones[0] : shift.zones;
-      const departmentName = shift.zones?.name ? ZONE_TO_DEPARTMENT_MAP[shift.zones.name] : undefined;
-      return { ...shift, department_name: departmentName }; // Add department_name to the shift object
-    }) || [];
   }
   return data as unknown as EmployeeWithDetails;
 };
-// --- END REINSTATED & MODIFIED fetchEmployeeData FUNCTION ---
+// --- END RESTORED fetchEmployeeData ---
+
+
+// --- RESTORED & MODIFIED fetchProjectedShiftsWithStatus from your snippet ---
+const fetchProjectedShiftsWithStatus = async (employeeId: string | null): Promise<{ pending: ProjectedShift[], confirmed: ProjectedShift[] }> => {
+  if (!employeeId) return { pending: [], confirmed: [] };
+
+  const today = new Date();
+  const ninetyDaysFromNow = new Date(today);
+  ninetyDaysFromNow.setDate(today.getDate() + 90);
+
+  const { data, error } = await supabase.rpc('get_projected_employee_schedule', {
+    p_employee_id: employeeId,
+    p_start_date: format(today, 'yyyy-MM-dd'),
+    p_end_date: format(ninetyDaysFromNow, 'yyyy-MM-dd')
+  });
+
+  if (error) throw new Error(error.message);
+  
+  // De-duplicate shifts: only take the first one for any given day.
+  const uniqueShifts: ProjectedShift[] = [];
+  const seenDates = new Set<string>();
+  if (data) {
+    for (const shift of data as ProjectedShift[]) { // Type assertion here for the RPC function's return
+      const shiftDay = format(new Date(shift.start_time), 'yyyy-MM-dd');
+      if (!seenDates.has(shiftDay)) {
+        // Enrich shifts with department name using the client-side map
+        const departmentName = shift.zones?.name ? ZONE_TO_DEPARTMENT_MAP[shift.zones.name] : undefined;
+        uniqueShifts.push({ ...shift, department_name: departmentName });
+        seenDates.add(shiftDay);
+      }
+    }
+  }
+
+  // Sort shifts chronologically for a better display
+  uniqueShifts.sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
+
+  const pending = uniqueShifts.filter(s => s.status === 'pending');
+  const confirmed = uniqueShifts.filter(s => s.status === 'confirmed');
+  return { pending, confirmed };
+}
+// --- END RESTORED & MODIFIED fetchProjectedShiftsWithStatus ---
 
 const EmployeeDashboard = () => {
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(null);
@@ -93,11 +123,18 @@ const EmployeeDashboard = () => {
     queryFn: fetchEmployeeList,
   });
 
-  // This query now fetches employee details AND all their shifts, enriched with department_name.
-  const { data: employee, isLoading: isLoadingDetails, refetch } = useQuery({
+  // This fetches employee details (not shifts)
+  const { data: employee, isLoading: isLoadingDetails, refetch: refetchDetails } = useQuery({
     queryKey: ['employeeData', selectedEmployeeId],
     queryFn: () => fetchEmployeeData(selectedEmployeeId),
     enabled: !!selectedEmployeeId,
+  });
+
+  // This separate query fetches all (projected/actual) shifts for the employee
+  const { data: shifts, isLoading: isLoadingShifts, refetch: refetchShifts } = useQuery({
+      queryKey: ['projectedShifts', selectedEmployeeId], // Use a distinct query key for shifts
+      queryFn: () => fetchProjectedShiftsWithStatus(selectedEmployeeId),
+      enabled: !!selectedEmployeeId
   });
 
   // --- MODIFIED handleShiftResponse FUNCTION for proper persistence and feedback ---
@@ -112,19 +149,14 @@ const EmployeeDashboard = () => {
       console.error("Failed to update shift status:", error);
     } else {
       toast.success(`Shift request ${newStatus}.`);
-      refetch(); // Refetch this employee's data to update the UI
-      queryClient.invalidateQueries({ queryKey: ['rosterSummary'] }); // Invalidate calendar data for manager/admin to reflect change
+      refetchShifts(); // IMPORTANT: Refetch the shifts to update the lists
+      queryClient.invalidateQueries({ queryKey: ['rosterSummary'] }); // Invalidate calendar for manager/admin
     }
   };
   // --- END MODIFIED handleShiftResponse FUNCTION ---
-
-  // Filter for pending shifts (these will have department_name thanks to fetchEmployeeData)
-  const pendingShifts = employee?.shifts.filter(s => s.status === 'pending') || [];
   
-  // Filter for upcoming confirmed shifts only and sort them chronologically.
-  const upcomingConfirmedShifts = employee?.shifts
-    .filter(s => s.status === 'confirmed' && new Date(s.end_time) >= new Date())
-    .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime()) || [];
+  // FIX: Corrected typo 'isLoadingShalls' to 'isLoadingShifts'
+  const isLoading = isLoadingDetails || isLoadingShifts; // Combined loading state
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-workspace-light/20 to-primary/5">
@@ -142,15 +174,15 @@ const EmployeeDashboard = () => {
                       {employeeList?.map(emp => (<SelectItem key={emp.id} value={emp.id}>{emp.full_name}</SelectItem>))}
                   </SelectContent>
               </Select>
-               <Button variant="outline" size="icon" onClick={() => refetch()} disabled={!selectedEmployeeId || isLoadingDetails}>
-                <RefreshCw className={`h-4 w-4 ${isLoadingDetails ? "animate-spin" : ""}`} />
+               <Button variant="outline" size="icon" onClick={() => { refetchDetails(); refetchShifts(); }} disabled={!selectedEmployeeId || isLoading}>
+                <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
                 <span className="sr-only">Refresh data</span>
               </Button>
             </div>
         </Card>
 
         {!selectedEmployeeId && (<div className="text-center text-muted-foreground mt-16"><p>Please select an employee.</p></div>)}
-        {isLoadingDetails && selectedEmployeeId && (<div><Skeleton className="w-full h-96" /></div>)}
+        {isLoading && selectedEmployeeId && (<div><Skeleton className="w-full h-96" /></div>)}
 
         {employee && (
           <>
@@ -168,12 +200,12 @@ const EmployeeDashboard = () => {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               <div className="lg:col-span-2 space-y-6">
                 
-                {/* --- START "New Shift Requests" (retains detailed display with department_name) --- */}
-                {pendingShifts.length > 0 && (
+                {/* --- START "New Shift Requests" Section (retains detailed display with department_name) --- */}
+                {shifts && shifts.pending.length > 0 && (
                   <Card>
                     <CardHeader><CardTitle>New Shift Requests</CardTitle></CardHeader>
                     <CardContent className="space-y-3">
-                        {pendingShifts.map(shift => (
+                        {shifts.pending.map(shift => (
                            <div key={shift.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
                                 <div>
                                     <p className="font-semibold text-primary">
@@ -193,25 +225,25 @@ const EmployeeDashboard = () => {
                     </CardContent>
                   </Card>
                 )}
-                {/* --- END "New Shift Requests" --- */}
+                {/* --- END "New Shift Requests" Section --- */}
 
                 <div>
                   <h2 className="text-2xl font-bold mb-4 flex items-center gap-2"><Calendar /> Upcoming Shifts</h2>
                   <div className="space-y-4">
-                    {/* --- START "Upcoming Shifts" (retains simpler display without department_name, as per your preference) --- */}
-                    {upcomingConfirmedShifts.length > 0 ? upcomingConfirmedShifts.map((shift) => (
+                    {/* --- START "Upcoming Shifts" Section (retains simpler display without department_name) --- */}
+                    {shifts && shifts.confirmed.length > 0 ? shifts.confirmed.slice(0, 5).map((shift) => (
                       <Card key={shift.id} className="p-4">
                         <div className="flex items-center justify-between">
                           <div>
                             <p className="font-bold">{format(new Date(shift.start_time), "EEEE, MMM d")}</p>
                             <p className="text-sm text-muted-foreground">{shift.zones?.name || 'General'}</p>
-                            {/* The department_name is intentionally NOT displayed here for confirmed shifts */}
+                            {/* Department name is intentionally NOT displayed here for confirmed shifts */}
                           </div>
                           <Badge>{formatDistanceToNow(new Date(shift.start_time), { addSuffix: true })}</Badge>
                         </div>
                       </Card>
-                    )) : <p className="text-muted-foreground">No upcoming shifts.</p>}
-                    {/* --- END "Upcoming Shifts" --- */}
+                    )) : <p className="text-muted-foreground">{isLoadingShifts ? "Loading..." : "No upcoming shifts."}</p>}
+                    {/* --- END "Upcoming Shifts" Section --- */}
                   </div>
                 </div>
                 
