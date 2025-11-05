@@ -53,7 +53,6 @@ const fetchEmployeeData = async (employeeId: string | null): Promise<EmployeeWit
   return data as unknown as EmployeeWithDetails;
 };
 
-// --- START ADDITION / MODIFICATION ---
 // A pragmatic map to link zone names to department names for demo purposes.
 // In a real application, the `zones` table would typically have a `department_id` foreign key.
 const ZONE_TO_DEPARTMENT_MAP: { [zoneName: string]: string } = {
@@ -64,9 +63,7 @@ const ZONE_TO_DEPARTMENT_MAP: { [zoneName: string]: string } = {
   "Kiddie Kingdom": "Rides & Attractions",
   "Mystic Forest": "Rides & Attractions",
   "Dino Valley": "Rides & Attractions",
-  // Add more specific mappings here if other zone types existed (e.g., "Food Court": "Food Services")
-  // For the purpose of this demo, all zones are assumed to be under "Rides & Attractions"
-  // You might extend this map if your mock data implies other zone-department relationships.
+  // Add more specific mappings here if your mock data implies other zone-department relationships.
 };
 
 const fetchProjectedShiftsWithStatus = async (employeeId: string | null): Promise<{ pending: ProjectedShift[], confirmed: ProjectedShift[] }> => {
@@ -107,7 +104,6 @@ const fetchProjectedShiftsWithStatus = async (employeeId: string | null): Promis
   const confirmed = enrichedShifts.filter(s => s.status === 'confirmed');
   return { pending, confirmed };
 }
-// --- END ADDITION / MODIFICATION ---
 
 const EmployeeDashboard = () => {
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(null);
@@ -189,17 +185,13 @@ const EmployeeDashboard = () => {
                         {shifts.pending.map(shift => (
                            <div key={shift.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
                                 <div>
-                                    <p className="font-semibold">{format(new Date(shift.start_time), "EEEE, MMM d")}</p>
-                                    <p className="text-sm text-muted-foreground">
-                                      {format(new Date(shift.start_time), "p")} - {format(new Date(shift.end_time), "p")}
+                                    <p className="font-semibold text-primary">
+                                        Manager requested service for {shift.department_name || 'a department'}
                                     </p>
-                                    {/* --- START MODIFICATION --- */}
-                                    {shift.department_name && (
-                                        <p className="text-xs text-muted-foreground text-left">
-                                            Department: {shift.department_name}
-                                        </p>
-                                    )}
-                                    {/* --- END MODIFICATION --- */}
+                                    <p className="text-sm text-muted-foreground">
+                                        on {format(new Date(shift.start_time), "EEEE, MMM d")}
+                                        from {format(new Date(shift.start_time), "p")} - {format(new Date(shift.end_time), "p")}
+                                    </p>
                                 </div>
                                 <div className="flex gap-2">
                                     <Button size="icon" variant="outline" className="h-8 w-8 text-success" onClick={() => handleShiftResponse(shift.id, 'confirmed')}><Check className="w-4 h-4"/></Button>
