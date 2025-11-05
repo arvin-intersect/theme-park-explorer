@@ -17,25 +17,25 @@ export interface Zone {
   map_position: { top: string; left: string };
 }
 
+// Base Shift interface for direct DB query
 export interface Shift {
   id: string;
   start_time: string; // ISO string
   end_time: string; // ISO string
-  zones: { name: string } | null;
+  zones: { name: string } | null; // Assumed structure from Supabase join
   status: ShiftStatus;
-  // department_name is explicitly added to the Shift interface
-  // as RPC results might get cast to this or ProjectedShift.
-  department_name?: string; 
+  department_name?: string; // Added for client-side enrichment in the fetching functions
 }
 
-// THIS TYPE IS CRUCIAL FOR fetchProjectedShiftsWithStatus to carry the enriched department_name
+// Type used specifically by the RPC function 'get_projected_employee_schedule'
+// It also needs department_name for any subsequent client-side enrichment
 export interface ProjectedShift {
   id: string;
   start_time: string;
   end_time: string;
   status: ShiftStatus;
   zones: { name: string } | null;
-  department_name?: string; // <--- THIS MUST BE PRESENT for client-side enrichment
+  department_name?: string; // Added for client-side enrichment
 }
 
 // For the Roster Dialog to show who is on a shift
@@ -83,10 +83,9 @@ export interface Employee extends Profile {
 }
 
 export interface EmployeeWithDetails extends Employee {
-  // IMPORTANT: Shifts are NOT fetched directly with employee details in this setup.
-  // They are fetched separately by fetchProjectedShiftsWithStatus.
-  // This adheres to your requirement of treating upcoming shifts as a separate concept.
-  // shifts: Shift[]; // This line is intentionally commented out for this structure.
+  // IMPORTANT: Shifts are no longer fetched directly as part of EmployeeWithDetails.
+  // They are fetched by separate dedicated functions for "Requests" and "Upcoming Shifts".
+  // shifts: Shift[]; // This line is intentionally commented out.
   employee_skills: { skills: Skill }[];
   employee_certifications: { certifications: Certification }[];
   performance_reviews: PerformanceReview[];
