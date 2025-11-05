@@ -8,7 +8,7 @@ import WorkforceNav from "@/components/WorkforceNav";
 import { toast } from "@/components/ui/sonner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabaseClient";
-import { EmployeeWithDetails, ProjectedShift, Department, Zone } from "@/types/database.types"; // Import Department and Zone
+import { EmployeeWithDetails, ProjectedShift, ShiftStatus } from "@/types/database.types"; 
 import { Skeleton } from "@/components/ui/skeleton";
 import { format, formatDistanceToNow } from "date-fns";
 import {
@@ -63,8 +63,21 @@ const ZONE_TO_DEPARTMENT_MAP: { [zoneName: string]: string } = {
   "Kiddie Kingdom": "Rides & Attractions",
   "Mystic Forest": "Rides & Attractions",
   "Dino Valley": "Rides & Attractions",
-  // Add more specific mappings here if your mock data implies other zone-department relationships.
+  "Park Services": "Park Services",
+  "Guest Services": "Guest Services",
+  "Maintenance": "Maintenance",
+  "Food Services": "Food Services",
+  "Retail & Shops": "Retail & Shops",
 };
+
+// Helper interface to explicitly type the raw data coming from Supabase select
+interface RawShiftFromSupabase {
+  id: string;
+  start_time: string;
+  end_time: string;
+  status: ShiftStatus;
+  zones: { name: string } | null; 
+}
 
 const fetchProjectedShiftsWithStatus = async (employeeId: string | null): Promise<{ pending: ProjectedShift[], confirmed: ProjectedShift[] }> => {
   if (!employeeId) return { pending: [], confirmed: [] };
@@ -73,35 +86,42 @@ const fetchProjectedShiftsWithStatus = async (employeeId: string | null): Promis
   const ninetyDaysFromNow = new Date(today);
   ninetyDaysFromNow.setDate(today.getDate() + 90);
 
-  const { data, error } = await supabase.rpc('get_projected_employee_schedule', {
-    p_employee_id: employeeId,
-    p_start_date: format(today, 'yyyy-MM-dd'),
-    p_end_date: format(ninetyDaysFromNow, 'yyyy-MM-dd')
-  });
+  const { data: shiftsData, error } = await supabase
+    .from('shifts')
+    .select(`
+      id,
+      start_time,
+      end_time,
+      status,
+      zones (name)
+    `)
+    .eq('employee_id', employeeId)
+    .gte('start_time', format(today, 'yyyy-MM-dd'))
+    .lte('start_time', format(ninetyDaysFromNow, 'yyyy-MM-dd'))
+    .order('start_time', { ascending: true });
 
-  if (error) throw new Error(error.message);
-  
-  // De-duplicate shifts: only take the first one for any given day.
+  if (error) {
+    console.error("Error fetching employee shifts:", error);
+    throw new Error(error.message);
+  }
+
   const uniqueShifts: ProjectedShift[] = [];
   const seenDates = new Set<string>();
-  if (data) {
-    for (const shift of data as ProjectedShift[]) {
+
+  // Use a double type assertion here to satisfy TypeScript, as inference can be tricky with Supabase joins.
+  if (shiftsData) {
+    for (const shift of shiftsData as unknown as RawShiftFromSupabase[]) { // <--- Corrected type assertion here
       const shiftDay = format(new Date(shift.start_time), 'yyyy-MM-dd');
       if (!seenDates.has(shiftDay)) {
-        uniqueShifts.push(shift);
+        const departmentName = shift.zones?.name ? ZONE_TO_DEPARTMENT_MAP[shift.zones.name] : undefined;
+        uniqueShifts.push({ ...shift, department_name: departmentName });
         seenDates.add(shiftDay);
       }
     }
   }
 
-  // Enrich shifts with department name using the client-side map
-  const enrichedShifts: ProjectedShift[] = uniqueShifts.map((shift) => {
-    const departmentName = shift.zones?.name ? ZONE_TO_DEPARTMENT_MAP[shift.zones.name] : undefined;
-    return { ...shift, department_name: departmentName };
-  });
-
-  const pending = enrichedShifts.filter(s => s.status === 'pending');
-  const confirmed = enrichedShifts.filter(s => s.status === 'confirmed');
+  const pending = uniqueShifts.filter(s => s.status === 'pending');
+  const confirmed = uniqueShifts.filter(s => s.status === 'confirmed');
   return { pending, confirmed };
 }
 
@@ -121,17 +141,31 @@ const EmployeeDashboard = () => {
   });
 
   const { data: shifts, isLoading: isLoadingShifts, refetch: refetchShifts } = useQuery({
-      queryKey: ['projectedShifts', selectedEmployeeId],
+      queryKey: ['employeeShifts', selectedEmployeeId], 
       queryFn: () => fetchProjectedShiftsWithStatus(selectedEmployeeId),
       enabled: !!selectedEmployeeId
   });
 
   const handleShiftResponse = async (shiftId: string, newStatus: 'confirmed' | 'rejected') => {
-    toast.warning("This is a demo action. Shift status is not persisted for projected shifts.");
-    // In a real app, you would find the original shift ID from the pattern and update it.
-    // For this demo, we'll just optimistically refetch.
-    refetchShifts();
-    queryClient.invalidateQueries({ queryKey: ['rosterSummary'] });
+    toast.warning(`Shift ${shiftId} marked as ${newStatus}. (This is a demo action. Status is not persisted in this mock setup.)`);
+    
+    // In a real application, you would update the shift's status in the database:
+    /*
+    const { error } = await supabase
+      .from('shifts')
+      .update({ status: newStatus })
+      .eq('id', shiftId);
+
+    if (error) {
+      toast.error(`Failed to update shift: ${error.message}`);
+    } else {
+      toast.success(`Shift ${shiftId} ${newStatus} successfully!`);
+      queryClient.invalidateQueries({ queryKey: ['employeeShifts', selectedEmployeeId] });
+      queryClient.invalidateQueries({ queryKey: ['rosterSummary'] }); // To update manager's view
+    }
+    */
+    refetchShifts(); 
+    queryClient.invalidateQueries({ queryKey: ['rosterSummary'] }); 
   };
   
   const isLoading = isLoadingDetails || isLoadingShifts;
@@ -186,7 +220,7 @@ const EmployeeDashboard = () => {
                            <div key={shift.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
                                 <div>
                                     <p className="font-semibold text-primary">
-                                        Manager requested service for {shift.department_name || 'a department'}
+                                        Manager requested service for {shift.department_name || shift.zones?.name || 'a department/zone'}
                                     </p>
                                     <p className="text-sm text-muted-foreground">
                                         on {format(new Date(shift.start_time), "EEEE, MMM d")}
@@ -212,6 +246,11 @@ const EmployeeDashboard = () => {
                           <div>
                             <p className="font-bold">{format(new Date(shift.start_time), "EEEE, MMM d")}</p>
                             <p className="text-sm text-muted-foreground">{shift.zones?.name || 'General'}</p>
+                            {shift.department_name && (
+                                <p className="text-xs text-muted-foreground text-left">
+                                    Department: {shift.department_name}
+                                </p>
+                            )}
                           </div>
                           <Badge>{formatDistanceToNow(new Date(shift.start_time), { addSuffix: true })}</Badge>
                         </div>
