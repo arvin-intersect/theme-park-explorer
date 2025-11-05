@@ -3,8 +3,8 @@
     { "source": "/(.*)", "destination": "/" }
   ],
   "functions": {
-    "src/api/chatbot.ts": {
-      "runtime": "nodejs18.x"
+    "src/api/**/*.ts": {
+      "maxDuration": 10
     }
   }
 }
