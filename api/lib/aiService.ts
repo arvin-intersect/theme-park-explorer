@@ -1,6 +1,6 @@
 // arvin-intersect-theme-park-explorer/src/api/lib/aiService.ts
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { DB_SCHEMA, CACHED_QUERIES, CachedQueryResult } from "./constants";
+import { DB_SCHEMA, CACHED_QUERIES, CachedQueryResult } from "./constants.js"; 
 import { compareTwoStrings } from 'string-similarity';
 
 // Initialize Gemini AI

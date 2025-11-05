@@ -9,9 +9,9 @@
         formatResponseWithLLM,
         isCasualMessage,
         getCasualResponse,
-    } from './lib/aiService';
-    import { executeQuery } from './lib/supabaseService';
-    import { CACHED_QUERIES, CachedQueryResult } from './lib/constants';
+    } from './lib/aiService.js';  // ← Add .js
+    import { executeQuery } from './lib/supabaseService.js';  // ← Add .js
+    import { CACHED_QUERIES, CachedQueryResult } from './lib/constants.js'; 
 
     // Type definitions for API requests/responses (re-defined for clarity in this endpoint)
     interface QuestionRequestBody {
