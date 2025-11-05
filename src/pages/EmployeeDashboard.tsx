@@ -47,6 +47,7 @@ const fetchEmployeeList = async () => {
   return data;
 };
 
+// --- MODIFIED fetchEmployeeData FUNCTION to enrich shifts with department_name ---
 const fetchEmployeeData = async (employeeId: string | null): Promise<EmployeeWithDetails | null> => {
   if (!employeeId) return null;
 
@@ -80,6 +81,7 @@ const fetchEmployeeData = async (employeeId: string | null): Promise<EmployeeWit
   }
   return data as unknown as EmployeeWithDetails;
 };
+// --- END MODIFIED fetchEmployeeData FUNCTION ---
 
 
 const EmployeeDashboard = () => {
@@ -121,10 +123,11 @@ const EmployeeDashboard = () => {
    queryClient.invalidateQueries({ queryKey: ['rosterSummary'] });
   };
 
-  // Filter for pending shifts
+  // Filter for pending shifts (these will have department_name thanks to fetchEmployeeData)
   const pendingShifts = employee?.shifts.filter(s => s.status === 'pending') || [];
   
   // Filter for upcoming confirmed shifts only and sort them chronologically.
+  // These will also have department_name, but we won't display it below.
   const upcomingConfirmedShifts = employee?.shifts
     .filter(s => s.status === 'confirmed' && new Date(s.end_time) >= new Date())
     .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime()) || [];
@@ -205,7 +208,12 @@ const EmployeeDashboard = () => {
                           <div>
                             <p className="font-bold">{format(new Date(shift.start_time), "EEEE, MMM d")}</p>
                             <p className="text-sm text-muted-foreground">{shift.zones?.name || 'General'}</p>
-                            {/* Department name removed here as per request for confirmed shifts */}
+                            {/* --- REMOVED DEPARTMENT DISPLAY FOR UPCOMING CONFIRMED SHIFTS --- */}
+                            {/* {shift.department_name && (
+                                <p className="text-xs text-muted-foreground text-left">
+                                    Department: {shift.department_name}
+                                </p>
+                            )} */}
                           </div>
                           <Badge>{formatDistanceToNow(new Date(shift.start_time), { addSuffix: true })}</Badge>
                         </div>
@@ -215,7 +223,7 @@ const EmployeeDashboard = () => {
                 </div>
                 
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* (Skills and Certifications sections remain the same in the component) */}
+                  {/* (Skills and Certifications sections remain the same in the component, not shown here for brevity) */}
                 </div>
               </div>
               
