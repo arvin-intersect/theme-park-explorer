@@ -8,7 +8,7 @@ import WorkforceNav from "@/components/WorkforceNav";
 import { toast } from "@/components/ui/sonner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabaseClient";
-import { EmployeeWithDetails, Shift, ShiftStatus } from "@/types/database.types"; // Import ShiftStatus
+import { EmployeeWithDetails, Shift, ShiftStatus } from "@/types/database.types"; 
 import { Skeleton } from "@/components/ui/skeleton";
 import { format, formatDistanceToNow } from "date-fns";
 import {
@@ -47,7 +47,6 @@ const fetchEmployeeList = async () => {
   return data;
 };
 
-// --- MODIFIED fetchEmployeeData FUNCTION ---
 const fetchEmployeeData = async (employeeId: string | null): Promise<EmployeeWithDetails | null> => {
   if (!employeeId) return null;
 
@@ -81,7 +80,6 @@ const fetchEmployeeData = async (employeeId: string | null): Promise<EmployeeWit
   }
   return data as unknown as EmployeeWithDetails;
 };
-// --- END MODIFIED fetchEmployeeData FUNCTION ---
 
 
 const EmployeeDashboard = () => {
@@ -180,7 +178,6 @@ const EmployeeDashboard = () => {
                         {pendingShifts.map(shift => (
                            <div key={shift.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
                                 <div>
-                                    {/* --- MODIFIED DISPLAY --- */}
                                     <p className="font-semibold text-primary">
                                         Manager requested service for {shift.department_name || shift.zones?.name || 'a department/zone'}
                                     </p>
@@ -188,7 +185,6 @@ const EmployeeDashboard = () => {
                                         on {format(new Date(shift.start_time), "EEEE, MMM d")}
                                         from {format(new Date(shift.start_time), "p")} - {format(new Date(shift.end_time), "p")}
                                     </p>
-                                    {/* --- END MODIFIED DISPLAY --- */}
                                 </div>
                                 <div className="flex gap-2">
                                     <Button size="icon" variant="outline" className="h-8 w-8 text-success" onClick={() => handleShiftResponse(shift.id, 'confirmed')}><Check className="w-4 h-4"/></Button>
@@ -209,12 +205,7 @@ const EmployeeDashboard = () => {
                           <div>
                             <p className="font-bold">{format(new Date(shift.start_time), "EEEE, MMM d")}</p>
                             <p className="text-sm text-muted-foreground">{shift.zones?.name || 'General'}</p>
-                            {/* Display department for confirmed shifts too if available */}
-                            {shift.department_name && (
-                                <p className="text-xs text-muted-foreground text-left">
-                                    Department: {shift.department_name}
-                                </p>
-                            )}
+                            {/* Department name removed here as per request for confirmed shifts */}
                           </div>
                           <Badge>{formatDistanceToNow(new Date(shift.start_time), { addSuffix: true })}</Badge>
                         </div>
