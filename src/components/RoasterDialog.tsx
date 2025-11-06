@@ -13,7 +13,8 @@ import { RosterSummary, SuggestedEmployee, ShiftWithEmployee, EmployeeWithDetail
 import EmployeeSchedule from '@/components/EmployeeSchedule';
 import { Skeleton } from './ui/skeleton';
 import { toast } from 'sonner';
-import { UserPlus, UserX, Star, Ban } from 'lucide-react';
+import { UserPlus, UserX, Star, Ban, Award, CheckCircle, Clock } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 
 interface RosterDialogProps {
   isOpen: boolean;
@@ -96,7 +97,8 @@ const fetchRosterForDay = async (departmentId: string, date: Date) => {
     })) as ShiftWithEmployee[];
 };
 
-const fetchAvailableEmployees = async (date: Date): Promise<SuggestedEmployee[]> => {
+// Fetch enriched suggestions with employee details
+const fetchAvailableEmployeesWithDetails = async (date: Date): Promise<SuggestedEmployee[]> => {
     const { data, error } = await supabase.rpc('get_available_employees_for_day', {
         target_date: format(date, 'yyyy-MM-dd')
     });
@@ -104,7 +106,28 @@ const fetchAvailableEmployees = async (date: Date): Promise<SuggestedEmployee[]>
         console.error("Suggestion fetch error:", error);
         throw new Error(error.message);
     }
-    return data || [];
+    
+    // Fetch additional details for each suggested employee
+    const enrichedSuggestions = await Promise.all((data || []).map(async (emp) => {
+      const { data: details } = await supabase
+        .from('profiles')
+        .select(`
+          employee_skills ( skills (name) ),
+          employee_certifications ( certifications (name) ),
+          performance_reviews ( attendance_score, reliability_score, performance_rating )
+        `)
+        .eq('id', emp.id)
+        .single();
+      
+      return {
+        ...emp,
+        employee_skills: details?.employee_skills || [],
+        employee_certifications: details?.employee_certifications || [],
+        performance_reviews: details?.performance_reviews || []
+      };
+    }));
+    
+    return enrichedSuggestions;
 };
 
 export function RosterDialog({ isOpen, onOpenChange, day, departmentId, zoneId }: RosterDialogProps) {
@@ -120,7 +143,7 @@ export function RosterDialog({ isOpen, onOpenChange, day, departmentId, zoneId }
 
   const { data: suggestions, isLoading: isLoadingSuggestions } = useQuery({
     queryKey: ['availableEmployees', day?.date],
-    queryFn: () => fetchAvailableEmployees(day!.date),
+    queryFn: () => fetchAvailableEmployeesWithDetails(day!.date),
     enabled: queryEnabled,
   });
 
@@ -197,14 +220,76 @@ export function RosterDialog({ isOpen, onOpenChange, day, departmentId, zoneId }
           
           <TabsContent value="suggestions" className="mt-4 max-h-[300px] overflow-y-auto">
             {isLoadingSuggestions ? <Skeleton className="h-40 w-full" /> : 
-              (suggestions && suggestions.length > 0) ? suggestions.map(emp => (
-                <div key={emp.id} onClick={() => setDetailEmployee(emp)} className="cursor-pointer">
-                  <EmployeeRow buttons={null}>
-                    <Avatar><AvatarFallback>{emp.full_name.charAt(0)}</AvatarFallback></Avatar>
-                    <div><p className="font-semibold">{emp.full_name}</p><p className="text-xs text-muted-foreground flex items-center gap-1">{emp.role} • <Star className="h-3 w-3 text-amber-400" /> {emp.avg_performance_rating.toFixed(1)}</p></div>
-                  </EmployeeRow>
-                </div>
-              )) : <div className="text-center text-sm text-muted-foreground pt-8">No available employees to suggest.</div>
+              (suggestions && suggestions.length > 0) ? suggestions.map(emp => {
+                // Extract skills, certifications, and performance data
+                const skills = emp.employee_skills?.map(es => es.skills.name) || [];
+                const certs = emp.employee_certifications?.map(ec => ec.certifications.name) || [];
+                const performance = emp.performance_reviews?.[0];
+                
+                const reasoning: string[] = [];
+                
+                // Performance rating
+                if (emp.avg_performance_rating >= 4.5) {
+                  reasoning.push(`Top Rated (${emp.avg_performance_rating.toFixed(1)}/5)`);
+                } else if (emp.avg_performance_rating >= 4.0) {
+                  reasoning.push(`High Rated (${emp.avg_performance_rating.toFixed(1)}/5)`);
+                }
+                
+                // Attendance & Reliability
+                if (performance) {
+                  if ((performance.attendance_score || 0) >= 95) {
+                    reasoning.push(`${performance.attendance_score}% Attendance`);
+                  }
+                  if ((performance.reliability_score || 0) >= 95) {
+                    reasoning.push(`${performance.reliability_score}% Reliable`);
+                  }
+                }
+                
+                // Key Skills
+                if (skills.includes('Ride Operation')) reasoning.push('Ride Operation');
+                if (skills.includes('First Aid')) reasoning.push('First Aid');
+                if (skills.includes('Customer Service')) reasoning.push('Customer Service');
+                
+                // Certifications
+                if (certs.includes('Ride Safety Level 1')) reasoning.push('Safety Certified');
+                if (certs.includes('CPR Certified')) reasoning.push('CPR Certified');
+                
+                // Fallback
+                if (reasoning.length === 0) {
+                  reasoning.push('Available for shift');
+                }
+
+                return (
+                  <div key={emp.id} onClick={() => setDetailEmployee(emp)} className="cursor-pointer">
+                    <EmployeeRow buttons={null}>
+                      <Avatar><AvatarFallback>{emp.full_name.charAt(0)}</AvatarFallback></Avatar>
+                      <div className="flex-1">
+                        <p className="font-semibold">{emp.full_name}</p>
+                        <p className="text-xs text-muted-foreground flex items-center gap-1">
+                          {emp.role} • <Star className="h-3 w-3 text-amber-400" /> {emp.avg_performance_rating.toFixed(1)}
+                        </p>
+                        {/* Reasoning badges */}
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {reasoning.slice(0, 3).map((reason, idx) => (
+                            <Badge key={idx} variant="outline" className="text-[10px] bg-primary/10">
+                              {reason.includes('Rated') && <Star className="h-2.5 w-2.5 mr-1 text-amber-400" />}
+                              {(reason.includes('Attendance') || reason.includes('Reliable')) && <Clock className="h-2.5 w-2.5 mr-1 text-green-500" />}
+                              {(reason.includes('Operation') || reason.includes('Aid') || reason.includes('Service')) && <Award className="h-2.5 w-2.5 mr-1 text-purple-400" />}
+                              {reason.includes('Certified') && <CheckCircle className="h-2.5 w-2.5 mr-1 text-blue-400" />}
+                              {reason}
+                            </Badge>
+                          ))}
+                          {reasoning.length > 3 && (
+                            <Badge variant="outline" className="text-[10px] bg-primary/10">
+                              +{reasoning.length - 3} more
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    </EmployeeRow>
+                  </div>
+                );
+              }) : <div className="text-center text-sm text-muted-foreground pt-8">No available employees to suggest.</div>
             }
           </TabsContent>
 
