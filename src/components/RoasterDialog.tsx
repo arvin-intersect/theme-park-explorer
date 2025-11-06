@@ -1,4 +1,4 @@
-// FILE: src/components/RosterDialog.tsx
+// FILE: src/components/RoasterDialog.tsx
 import { useState, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { format, setHours, addHours } from 'date-fns';
@@ -9,11 +9,12 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFo
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Card, CardHeader, CardTitle } from '@/components/ui/card';
-import { RosterSummary, SuggestedEmployee, ShiftWithEmployee, EmployeeWithDetails, ProjectedShift } from '@/types/database.types';
+import { RosterSummary, SuggestedEmployee, ShiftWithEmployee, EmployeeWithDetails, ProjectedShift, Department, Skill, Certification, PerformanceReview } from '@/types/database.types'; // Make sure all types are imported
 import EmployeeSchedule from '@/components/EmployeeSchedule';
 import { Skeleton } from './ui/skeleton';
 import { toast } from 'sonner';
-import { UserPlus, UserX, Star, Ban } from 'lucide-react';
+import { UserPlus, UserX, Star, Ban, Award, CheckCircle, Clock } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 
 interface RosterDialogProps {
   isOpen: boolean;
@@ -65,8 +66,8 @@ const fetchEmployeeData = async (employeeId: string | null): Promise<EmployeeWit
   const { data, error } = await supabase
     .from('profiles')
     .select(`
-      id, full_name, role,
-      departments (name),
+      id, full_name, role, department_id,
+      departments (id, name, icon, color),
       employee_skills ( skills (name) ),
       employee_certifications ( certifications (name) ),
       performance_reviews ( attendance_score, reliability_score, performance_rating )
@@ -77,7 +78,9 @@ const fetchEmployeeData = async (employeeId: string | null): Promise<EmployeeWit
   if (error) throw new Error(error.message);
   
   if (data) {
-    // @ts-ignore
+    // Supabase can return joined `departments` as an array even if it's single
+    // Ensure it's correctly typed as a single object or null
+    // @ts-ignore // Ignore the potential type mismatch for data.departments for now
     data.departments = Array.isArray(data.departments) ? data.departments[0] : data.departments;
   }
   return data as unknown as EmployeeWithDetails;
@@ -96,16 +99,74 @@ const fetchRosterForDay = async (departmentId: string, date: Date) => {
     })) as ShiftWithEmployee[];
 };
 
-const fetchAvailableEmployees = async (date: Date): Promise<SuggestedEmployee[]> => {
-    const { data, error } = await supabase.rpc('get_available_employees_for_day', {
-        target_date: format(date, 'yyyy-MM-dd')
-    });
-    if (error) {
-        console.error("Suggestion fetch error:", error);
-        throw new Error(error.message);
-    }
-    return data || [];
+// NEW: Raw interface for the data structure directly returned by Supabase's .select()
+interface RawEmployeeDataFromSelect {
+  id: string;
+  full_name: string;
+  role: string;
+  department_id: string | null;
+  // Supabase returns departments as an array of objects even for one-to-one relationships
+  departments: { id: string; name: string; icon: string | null; color: string | null }[] | null;
+  employee_skills: { skills: Skill }[];
+  employee_certifications: { certifications: Certification }[];
+  performance_reviews: PerformanceReview[];
+}
+
+// NEW: Fetch all employees with their full details (used as a base for suggestions)
+const fetchAllEmployeesWithFullDetails = async (): Promise<EmployeeWithDetails[]> => {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select(`
+      id, full_name, role, department_id,
+      departments (id, name, icon, color),
+      employee_skills ( skills (name) ),
+      employee_certifications ( certifications (name) ),
+      performance_reviews ( attendance_score, reliability_score, performance_rating )
+    `);
+  if (error) {
+    console.error("Error fetching all employees with full details:", error);
+    throw new Error(error.message);
+  }
+
+  // Safely transform the raw data into the EmployeeWithDetails type
+  return (data as unknown as RawEmployeeDataFromSelect[] || []).map(rawEmployee => ({
+    ...rawEmployee,
+    // Extract the first department object from the array, or null if not present
+    departments: rawEmployee.departments && rawEmployee.departments.length > 0
+                 ? rawEmployee.departments[0] as Department
+                 : null,
+  })) as EmployeeWithDetails[];
 };
+
+
+// MODIFIED: fetchAvailableEmployees to return SuggestedEmployee with full details
+const fetchAvailableEmployees = async (date: Date, departmentId: string | null): Promise<SuggestedEmployee[]> => {
+    const allEmployees = await fetchAllEmployeesWithFullDetails(); // Get all employees with full details
+    const rosteredShifts = await fetchRosterForDay(departmentId!, date); // Get who is rostered for this day/dept
+
+    const rosteredEmployeeIds = new Set(rosteredShifts.map(s => s.profiles?.id).filter(Boolean));
+
+    const available = allEmployees
+        .filter(emp => !rosteredEmployeeIds.has(emp.id)) // Filter out those already rostered
+        .filter(emp => !departmentId || emp.departments?.id === departmentId) // Filter by department if specified
+        .map(emp => {
+            // Calculate avg_performance_rating from performance_reviews
+            const performanceRatings = emp.performance_reviews?.map(pr => pr.performance_rating).filter(p => p !== null) || [];
+            const avg_performance_rating = performanceRatings.length > 0
+                ? performanceRatings.reduce((sum, rating) => sum + rating!, 0) / performanceRatings.length
+                : 0;
+
+            return {
+                ...emp,
+                avg_performance_rating: parseFloat(avg_performance_rating.toFixed(1)) // Attach for convenience
+            } as SuggestedEmployee;
+        })
+        .sort((a, b) => b.avg_performance_rating - a.avg_performance_rating) // Sort by performance (highest first)
+        .slice(0, 15); // Limit suggestions to a reasonable number, e.g., top 15
+
+    return available;
+};
+
 
 export function RosterDialog({ isOpen, onOpenChange, day, departmentId, zoneId }: RosterDialogProps) {
   const queryClient = useQueryClient();
@@ -119,9 +180,10 @@ export function RosterDialog({ isOpen, onOpenChange, day, departmentId, zoneId }
   });
 
   const { data: suggestions, isLoading: isLoadingSuggestions } = useQuery({
-    queryKey: ['availableEmployees', day?.date],
-    queryFn: () => fetchAvailableEmployees(day!.date),
+    queryKey: ['availableEmployees', day?.date, departmentId], // Add departmentId to key for accurate caching
+    queryFn: () => fetchAvailableEmployees(day!.date, departmentId),
     enabled: queryEnabled,
+    staleTime: 1000 * 60, // 1 minute
   });
 
   const { data: employeeDetails, isLoading: isLoadingEmployeeDetails } = useQuery({
@@ -131,7 +193,7 @@ export function RosterDialog({ isOpen, onOpenChange, day, departmentId, zoneId }
   });
 
   const { data: projectedShifts, isLoading: isLoadingProjectedShifts } = useQuery({
-    queryKey: ['projectedShifts', detailEmployee?.id],
+    queryKey: ['projectedShifts', detailEmployee?.id, day?.date], // Add day.date to key for distinction
     queryFn: () => fetchProjectedShifts(detailEmployee!.id, day?.date ?? null),
     enabled: !!detailEmployee,
   });
@@ -145,8 +207,9 @@ export function RosterDialog({ isOpen, onOpenChange, day, departmentId, zoneId }
   const handleRosterAction = async (action: 'create' | 'delete', employeeId: string, shiftId?: string) => {
     let error;
     if (action === 'create' && day && zoneId) {
+        // Assume a standard 9 AM to 5 PM shift for new requests
         const startTime = setHours(day.date, 9);
-        const endTime = addHours(startTime, 8);
+        const endTime = addHours(startTime, 8); // 8-hour shift
         ({ error } = await supabase.from('shifts').insert({
             employee_id: employeeId, zone_id: zoneId,
             start_time: startTime.toISOString(), end_time: endTime.toISOString(),
@@ -164,6 +227,7 @@ export function RosterDialog({ isOpen, onOpenChange, day, departmentId, zoneId }
         queryClient.invalidateQueries({ queryKey: ['rosterForDay'] });
         queryClient.invalidateQueries({ queryKey: ['availableEmployees'] });
         queryClient.invalidateQueries({ queryKey: ['rosterSummary'] });
+        queryClient.invalidateQueries({ queryKey: ['projectedShifts'] }); // Invalidate for selected employee if they were detailed
     }
   };
 
@@ -197,14 +261,74 @@ export function RosterDialog({ isOpen, onOpenChange, day, departmentId, zoneId }
           
           <TabsContent value="suggestions" className="mt-4 max-h-[300px] overflow-y-auto">
             {isLoadingSuggestions ? <Skeleton className="h-40 w-full" /> : 
-              (suggestions && suggestions.length > 0) ? suggestions.map(emp => (
-                <div key={emp.id} onClick={() => setDetailEmployee(emp)} className="cursor-pointer">
-                  <EmployeeRow buttons={null}>
-                    <Avatar><AvatarFallback>{emp.full_name.charAt(0)}</AvatarFallback></Avatar>
-                    <div><p className="font-semibold">{emp.full_name}</p><p className="text-xs text-muted-foreground flex items-center gap-1">{emp.role} • <Star className="h-3 w-3 text-amber-400" /> {emp.avg_performance_rating.toFixed(1)}</p></div>
-                  </EmployeeRow>
-                </div>
-              )) : <div className="text-center text-sm text-muted-foreground pt-8">No available employees to suggest.</div>
+              (suggestions && suggestions.length > 0) ? suggestions.map(emp => {
+                const skills = emp.employee_skills?.map(es => es.skills.name) || [];
+                const certs = emp.employee_certifications?.map(ec => ec.certifications.name) || [];
+                const performance = emp.performance_reviews?.[0]; // Taking the first review for simplicity
+
+                const reasoning: string[] = [];
+                // Reasoning based on performance rating
+                if (emp.avg_performance_rating >= 4.5) {
+                  reasoning.push(`Top Rated (${emp.avg_performance_rating.toFixed(1)}/5)`);
+                } else if (emp.avg_performance_rating >= 4.0) {
+                  reasoning.push(`High Rated (${emp.avg_performance_rating.toFixed(1)}/5)`);
+                }
+                
+                // Reasoning based on skills
+                if (skills.includes('Ride Operation')) reasoning.push('Ride Operation Skill');
+                if (skills.includes('First Aid')) reasoning.push('First Aid Skill');
+                if (skills.includes('Customer Service')) reasoning.push('Customer Service Skill');
+                if (skills.includes('Cash Handling')) reasoning.push('Cash Handling Skill');
+
+                // Reasoning based on certifications
+                if (certs.includes('Ride Safety Level 1')) reasoning.push('Ride Safety Certified');
+                if (certs.includes('CPR Certified')) reasoning.push('CPR Certified');
+                if (certs.includes('ServSafe')) reasoning.push('ServSafe Certified');
+
+                // Reasoning based on attendance/reliability (from the first performance review)
+                if (performance) {
+                  if ((performance.attendance_score || 0) > 95) reasoning.push('Excellent Attendance');
+                  if ((performance.reliability_score || 0) > 95) reasoning.push('Highly Reliable');
+                }
+
+                // If no specific reasoning, provide a general one
+                if (reasoning.length === 0) {
+                    reasoning.push('Good fit based on overall profile.');
+                }
+
+                return (
+                  <div key={emp.id} className="cursor-pointer" onClick={() => setDetailEmployee(emp)}>
+                    <EmployeeRow buttons={null}> {/* Buttons for detail actions are handled by SheetFooter */}
+                      <Avatar><AvatarFallback>{emp.full_name.charAt(0)}</AvatarFallback></Avatar>
+                      <div className="flex-1">
+                        <p className="font-semibold">{emp.full_name}</p>
+                        <p className="text-xs text-muted-foreground flex items-center gap-1">
+                          {emp.role} {emp.avg_performance_rating > 0 && `• ${emp.avg_performance_rating.toFixed(1)}`} <Star className="h-3 w-3 text-amber-400" />
+                        </p>
+                        {/* Displaying reasoning */}
+                        {reasoning.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-1 text-xs">
+                              {reasoning.slice(0,3).map((r, rIdx) => ( // Show top 3 reasons as badges
+                                  <Badge key={rIdx} variant="outline" className="text-primary-foreground/80 bg-primary/20">
+                                      {r.includes("Top Rated") || r.includes("High Rated") ? <Star className="h-3 w-3 mr-1 text-amber-400" /> : 
+                                       r.includes("Attendance") || r.includes("Reliable") ? <Clock className="h-3 w-3 mr-1 text-green-500" /> : 
+                                       r.includes("Skill") ? <Award className="h-3 w-3 mr-1 text-purple-400" /> :
+                                       r.includes("Certified") ? <CheckCircle className="h-3 w-3 mr-1 text-blue-400" /> : null}
+                                      {r}
+                                  </Badge>
+                              ))}
+                              {reasoning.length > 3 && (
+                                  <Badge variant="outline" className="text-primary-foreground/80 bg-primary/20">
+                                      +{reasoning.length - 3} more
+                                  </Badge>
+                              )}
+                          </div>
+                        )}
+                      </div>
+                    </EmployeeRow>
+                  </div>
+                );
+              }) : <div className="text-center text-sm text-muted-foreground pt-8">No available employees to suggest.</div>
             }
           </TabsContent>
 

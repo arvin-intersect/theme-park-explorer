@@ -47,10 +47,12 @@ export interface ShiftWithEmployee extends Shift {
   } | null;
 }
 
-export interface SuggestedEmployee {
-  id: string;
-  full_name: string;
-  role: string;
+// For employee suggestions in RosterDialog, we need more detail.
+// This will include skills, certifications, and detailed performance.
+export interface SuggestedEmployee extends EmployeeWithDetails {
+  // The RPC get_available_employees_for_day specifically returns this, so we keep it.
+  // Although EmployeeWithDetails also has performance_reviews, having avg_performance_rating
+  // directly here from the RPC is convenient.
   avg_performance_rating: number;
 }
 
@@ -79,7 +81,7 @@ export interface Profile {
 }
 
 export interface Employee extends Profile {
-  departments: { id: string, name: string } | null; 
+  departments: { id: string, name: string } | null;
 }
 
 export interface EmployeeWithDetails extends Employee {
