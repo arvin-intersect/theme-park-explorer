@@ -27,7 +27,7 @@ const WorkforceNav = () => {
     setRole(newRole);
     if (newRole === "admin") navigate("/admin");
     else if (newRole === "manager") navigate("/manager");
-    else navigate("/employee");
+    else navigate("/manager"); // Manager is the default if no specific employee view.
   };
 
   return (
@@ -61,7 +61,7 @@ const WorkforceNav = () => {
             <Button
               variant="ghost"
               onClick={() => navigate("/admin")}
-              className={location.pathname === "/admin" ? "bg-primary/10 text-primary" : ""}
+              className={location.pathname.startsWith("/admin") ? "bg-primary/10 text-primary" : ""}
             >
               <Shield className="w-4 h-4 mr-2" />
               Admin
@@ -69,7 +69,7 @@ const WorkforceNav = () => {
             <Button
               variant="ghost"
               onClick={() => navigate("/manager")}
-              className={location.pathname === "/manager" ? "bg-primary/10 text-primary" : ""}
+              className={location.pathname.startsWith("/manager") ? "bg-primary/10 text-primary" : ""}
             >
               <Users className="w-4 h-4 mr-2" />
               Manager
@@ -77,7 +77,7 @@ const WorkforceNav = () => {
             <Button
               variant="ghost"
               onClick={() => navigate("/employee")}
-              className={location.pathname === "/employee" ? "bg-primary/10 text-primary" : ""}
+              className={location.pathname.startsWith("/employee") ? "bg-primary/10 text-primary" : ""}
             >
               <User className="w-4 h-4 mr-2" />
               Employee
@@ -85,7 +85,7 @@ const WorkforceNav = () => {
              <Button // NEW AI Chat Button
               variant="ghost"
               onClick={() => navigate("/ai-chat")}
-              className={location.pathname === "/ai-chat" ? "bg-primary/10 text-primary" : ""}
+              className={location.pathname.startsWith("/ai-chat") ? "bg-primary/10 text-primary" : ""}
             >
               <BotMessageSquare className="w-4 h-4 mr-2" />
               AI Chat

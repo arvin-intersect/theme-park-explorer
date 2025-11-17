@@ -7,8 +7,9 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card } from '@/components/ui/card';
 import { Bot, User, SendHorizonal, Loader2, Sparkles, X, LayoutDashboard } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { parseMarkdown } from '@/lib/markdownParser'; // NEW IMPORT
+import { parseMarkdown } from '@/lib/markdownParser';
 import { useNavigate } from 'react-router-dom';
+import WorkforceNav from '@/components/WorkforceNav'; // NEW IMPORT
 
 // Register Chart.js components
 Chart.register(...registerables);
@@ -235,7 +236,7 @@ const AIChatPage = () => {
         if (chartConfig) {
             const chart = new Chart(chartCanvas, chartConfig);
             chartInstances.current.push(chart);
-            scrollToBottom();
+            // No need to scroll here, useEffect will handle it
         } else {
             console.error("Could not generate chart config for type:", vizData.type);
         }
@@ -301,7 +302,7 @@ const AIChatPage = () => {
             });
         } finally {
             setIsLoading(false);
-            setTimeout(scrollToBottom, 150);
+            // Scrolling is handled by useEffect on currentAnswer update
         }
     };
 
@@ -321,41 +322,27 @@ const AIChatPage = () => {
 
     // Scroll to bottom whenever currentQuestion or currentAnswer updates
     useEffect(() => {
-        scrollToBottom();
-    }, [currentQuestion, currentAnswer]);
+        // Only scroll if there's content to scroll to and not actively loading (which might cause jumpiness)
+        if (!isLoading && chatScrollRef.current) {
+            scrollToBottom();
+        }
+    }, [currentQuestion, currentAnswer, isLoading]);
 
 
     return (
         <div className="flex flex-col min-h-screen bg-page-background">
-            {/* Header */}
-            <header className="relative bg-chat-header text-white p-6 shadow-xl">
-                <div className="container mx-auto flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                        <Button variant="ghost" className="text-white hover:bg-white/10" onClick={() => navigate('/admin')}>
-                            <LayoutDashboard className="h-5 w-5" />
-                            <span className="ml-2 hidden sm:inline">Dashboard</span>
-                        </Button>
-                        <h1 className="text-3xl font-bold flex items-center gap-3">
-                            <Sparkles className="h-8 w-8 text-white" /> Peakville AI Chat
-                        </h1>
-                    </div>
-                    <Button variant="ghost" className="text-white hover:bg-white/10" onClick={() => navigate('/')}>
-                        <X className="h-5 w-5" />
-                        <span className="ml-2 hidden sm:inline">Close</span>
-                    </Button>
-                </div>
-            </header>
-
-            <main className="flex-1 overflow-hidden flex flex-col container mx-auto py-8">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-6 flex-1 h-full"> {/* h-full important for flex-1 ScrollArea */}
+            <WorkforceNav /> {/* Added WorkforceNav component here */}
+            
+            <main className="flex-1 overflow-hidden flex flex-col container mx-auto py-8"> {/* Adjusted py-8 for spacing below navbar */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6 flex-1 h-full">
                     {/* Example Questions Sidebar */}
-                    <Card className="col-span-1 bg-card/80 backdrop-blur-sm shadow-lg overflow-y-auto hidden md:flex flex-col"> {/* Added flex-col to Card */}
+                    <Card className="col-span-1 bg-card/80 backdrop-blur-sm shadow-lg overflow-y-auto hidden md:flex flex-col">
                         <Card className="p-4 bg-primary text-primary-foreground rounded-b-none">
                             <h3 className="font-semibold text-lg flex items-center gap-2">
                                 <Bot className="h-5 w-5" /> Try asking...
                             </h3>
                         </Card>
-                        <ScrollArea className="flex-1 p-4"> {/* flex-1 here is important for internal scrolling */}
+                        <ScrollArea className="flex-1 p-4">
                             <ul className="space-y-3">
                                 {exampleQuestions.map((q, index) => (
                                     <li key={index}>
@@ -378,8 +365,9 @@ const AIChatPage = () => {
 
                     {/* Chat Area */}
                     <div className="md:col-span-3 flex flex-col bg-card/80 backdrop-blur-sm rounded-lg shadow-lg">
-                        <ScrollArea ref={chatScrollRef} className="flex-1 p-6"> {/* This ScrollArea is the primary scrollable element for chat messages */}
+                        <ScrollArea ref={chatScrollRef} className="flex-1 p-6">
                             <div className="flex flex-col gap-4">
+                                {/* Only display current question */}
                                 {currentQuestion && (
                                     <div className="flex justify-end">
                                         <div className="max-w-[70%] flex flex-col gap-2 items-end">
@@ -389,11 +377,12 @@ const AIChatPage = () => {
                                         </div>
                                     </div>
                                 )}
+                                {/* Only display current answer */}
                                 {currentAnswer && (
                                     <div className="flex justify-start">
                                         <div className="max-w-[70%] flex flex-col gap-2 items-start">
                                             <Card className={cn(
-                                                "p-3 rounded-lg text-sm prose dark:prose-invert max-w-none", // Added prose classes for markdown styling
+                                                "p-3 rounded-lg text-sm prose dark:prose-invert max-w-none",
                                                 currentAnswer.isUser ? "bg-primary text-primary-foreground rounded-br-none" : "bg-background text-foreground rounded-bl-none border border-border/50 shadow-sm",
                                                 currentAnswer.isError && "bg-destructive/10 text-destructive border-destructive"
                                             )}>
