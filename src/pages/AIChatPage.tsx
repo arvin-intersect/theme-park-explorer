@@ -36,7 +36,6 @@ const AIChatPage = () => {
     const chartInstances = useRef<Chart[]>([]); // Store Chart.js instances for cleanup
 
     const exampleQuestions = [
-        "What is the total number of employees?",
         "Show me employees by department",
         "What are the average performance ratings by department?",
         "How many attractions are in each zone?",
