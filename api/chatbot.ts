@@ -1,4 +1,4 @@
- // arvin-intersect-theme-park-explorer/src/api/chatbot.ts
+// arvin-intersect-theme-park-explorer/src/api/chatbot.ts
     // This file acts as a serverless function endpoint for Vercel.
 
     import type { VercelRequest, VercelResponse } from '@vercel/node';

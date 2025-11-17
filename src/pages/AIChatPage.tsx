@@ -1,3 +1,4 @@
+// FILE: src/pages/AIChatPage.tsx
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Chart, registerables } from 'chart.js';
 import { Button } from '@/components/ui/button';
@@ -26,10 +27,11 @@ interface Message {
 
 const AIChatPage = () => {
     const navigate = useNavigate();
-    const [messages, setMessages] = useState<Message[]>([]);
+    const [currentQuestion, setCurrentQuestion] = useState<Message | null>(null); // Only store the latest user question
+    const [currentAnswer, setCurrentAnswer] = useState<Message | null>(null);     // Only store the latest AI answer
     const [questionInput, setQuestionInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
-    const chatContainerRef = useRef<HTMLDivElement>(null);
+    const chatScrollRef = useRef<HTMLDivElement>(null); // Renamed from chatContainerRef for clarity
     const chartInstances = useRef<Chart[]>([]); // Store Chart.js instances for cleanup
 
     const exampleQuestions = [
@@ -58,22 +60,10 @@ const AIChatPage = () => {
     ];
 
     const scrollToBottom = () => {
-        if (chatContainerRef.current) {
-            chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+        if (chatScrollRef.current) {
+            chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
         }
     };
-
-    const addMessage = useCallback((content: string, isUser: boolean, vizData?: any, isError?: boolean, isLoading?: boolean) => {
-        const newMessage: Message = { id: Date.now().toString(), content, isUser, vizData, isError, isLoading };
-        setMessages((prev) => [...prev, newMessage]);
-        return newMessage;
-    }, []);
-
-    const updateMessage = useCallback((id: string, updates: Partial<Message>) => {
-        setMessages((prev) =>
-            prev.map((msg) => (msg.id === id ? { ...msg, ...updates } : msg))
-        );
-    }, []);
 
     const clearCharts = () => {
         chartInstances.current.forEach(chart => chart.destroy());
@@ -251,23 +241,26 @@ const AIChatPage = () => {
         }
     }, []);
 
-    const sendQuestion = async (questionToSend: string = questionInput) => {
-        const question = questionToSend.trim();
-        if (!question) return;
+    const sendQuestion = async (questionText: string) => {
+        if (!questionText.trim()) return;
 
-        // Add user message
-        const userMessage = addMessage(question, true);
-        setQuestionInput('');
+        clearCharts(); // Clear previous charts when a new question is asked
+
+        // Set the new user question
+        const newUserMessage: Message = { id: Date.now().toString(), content: questionText, isUser: true };
+        setCurrentQuestion(newUserMessage);
+        setQuestionInput(''); // Clear input
+
+        // Set a loading AI message
+        const newLoadingAIMessage: Message = { id: (Date.now() + 1).toString(), content: 'Thinking...', isUser: false, isLoading: true };
+        setCurrentAnswer(newLoadingAIMessage);
         setIsLoading(true);
-
-        // Add loading message for AI response
-        const loadingMsg = addMessage('Thinking...', false, undefined, false, true);
 
         try {
             const response = await fetch(API_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ question: question })
+                body: JSON.stringify({ question: questionText })
             });
 
             if (!response.ok) {
@@ -277,30 +270,31 @@ const AIChatPage = () => {
 
             const data = await response.json();
 
-            // Update the loading message with the actual response
-            updateMessage(loadingMsg.id, {
+            // Update the AI message with actual response
+            setCurrentAnswer({
+                ...newLoadingAIMessage,
                 isLoading: false,
                 content: data.answer,
                 vizData: data.visualization
             });
 
-            // Create chart if visualization data exists
             if (data.visualization) {
                 setTimeout(() => {
-                    const chartWrapper = document.getElementById(`chart-wrapper-${loadingMsg.id}`);
+                    const chartWrapper = document.getElementById(`chart-wrapper-${newLoadingAIMessage.id}`);
                     if (chartWrapper) {
                         chartWrapper.innerHTML = ''; // Clear any existing canvas first
                         const chartCanvas = document.createElement('canvas');
                         chartCanvas.className = `w-full h-full`;
                         chartWrapper.appendChild(chartCanvas);
-                        createChart(data.visualization, loadingMsg.id, chartCanvas);
+                        createChart(data.visualization, newLoadingAIMessage.id, chartCanvas);
                     } else {
-                        console.error("Chart wrapper not found for message:", loadingMsg.id);
+                        console.error("Chart wrapper not found for message:", newLoadingAIMessage.id);
                     }
                 }, 100);
             }
         } catch (error: any) {
-            updateMessage(loadingMsg.id, {
+            setCurrentAnswer({
+                ...newLoadingAIMessage,
                 isLoading: false,
                 isError: true,
                 content: `Error: ${error.message}`
@@ -313,20 +307,22 @@ const AIChatPage = () => {
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
         if (e.key === 'Enter' && !isLoading) {
-            sendQuestion();
+            sendQuestion(questionInput);
         }
     };
 
+    // Initial message on load, and cleanup
     useEffect(() => {
-        addMessage('Hello! Ask me anything about Peakville Park data. 🎢', false);
+        setCurrentAnswer({ id: Date.now().toString(), content: 'Hello! Ask me anything about Peakville Park data. 🎢', isUser: false });
         return () => {
-            clearCharts(); // Cleanup charts when component unmounts
+            clearCharts(); // Destroy chart instances when component unmounts
         };
     }, []);
 
+    // Scroll to bottom whenever currentQuestion or currentAnswer updates
     useEffect(() => {
         scrollToBottom();
-    }, [messages]);
+    }, [currentQuestion, currentAnswer]);
 
 
     return (
@@ -351,15 +347,15 @@ const AIChatPage = () => {
             </header>
 
             <main className="flex-1 overflow-hidden flex flex-col container mx-auto py-8">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-6 flex-1">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6 flex-1 h-full"> {/* h-full important for flex-1 ScrollArea */}
                     {/* Example Questions Sidebar */}
-                    <Card className="col-span-1 bg-card/80 backdrop-blur-sm shadow-lg overflow-y-auto hidden md:block">
+                    <Card className="col-span-1 bg-card/80 backdrop-blur-sm shadow-lg overflow-y-auto hidden md:flex flex-col"> {/* Added flex-col to Card */}
                         <Card className="p-4 bg-primary text-primary-foreground rounded-b-none">
                             <h3 className="font-semibold text-lg flex items-center gap-2">
                                 <Bot className="h-5 w-5" /> Try asking...
                             </h3>
                         </Card>
-                        <ScrollArea className="h-[calc(100%-4rem)] p-4">
+                        <ScrollArea className="flex-1 p-4"> {/* flex-1 here is important for internal scrolling */}
                             <ul className="space-y-3">
                                 {exampleQuestions.map((q, index) => (
                                     <li key={index}>
@@ -382,40 +378,45 @@ const AIChatPage = () => {
 
                     {/* Chat Area */}
                     <div className="md:col-span-3 flex flex-col bg-card/80 backdrop-blur-sm rounded-lg shadow-lg">
-                        <ScrollArea ref={chatContainerRef} className="flex-1 p-6">
+                        <ScrollArea ref={chatScrollRef} className="flex-1 p-6"> {/* This ScrollArea is the primary scrollable element for chat messages */}
                             <div className="flex flex-col gap-4">
-                                {messages.map((msg) => (
-                                    <div key={msg.id} className={cn("flex", msg.isUser ? "justify-end" : "justify-start")}>
-                                        <div className={cn("max-w-[70%] flex flex-col gap-2", msg.isUser ? "items-end" : "items-start")}>
-                                            <Card
-                                                className={cn(
-                                                    "p-3 rounded-lg text-sm transition-all duration-200 prose dark:prose-invert max-w-none", // Added prose classes for markdown styling
-                                                    msg.isUser
-                                                        ? "bg-primary text-primary-foreground rounded-br-none"
-                                                        : "bg-background text-foreground rounded-bl-none border border-border/50 shadow-sm",
-                                                    msg.isError && "bg-destructive/10 text-destructive border-destructive"
-                                                )}
-                                            >
-                                                {msg.isLoading ? (
+                                {currentQuestion && (
+                                    <div className="flex justify-end">
+                                        <div className="max-w-[70%] flex flex-col gap-2 items-end">
+                                            <Card className="p-3 rounded-lg text-sm bg-primary text-primary-foreground rounded-br-none prose dark:prose-invert max-w-none">
+                                                <div dangerouslySetInnerHTML={{ __html: parseMarkdown(currentQuestion.content) }} />
+                                            </Card>
+                                        </div>
+                                    </div>
+                                )}
+                                {currentAnswer && (
+                                    <div className="flex justify-start">
+                                        <div className="max-w-[70%] flex flex-col gap-2 items-start">
+                                            <Card className={cn(
+                                                "p-3 rounded-lg text-sm prose dark:prose-invert max-w-none", // Added prose classes for markdown styling
+                                                currentAnswer.isUser ? "bg-primary text-primary-foreground rounded-br-none" : "bg-background text-foreground rounded-bl-none border border-border/50 shadow-sm",
+                                                currentAnswer.isError && "bg-destructive/10 text-destructive border-destructive"
+                                            )}>
+                                                {currentAnswer.isLoading ? (
                                                     <div className="flex items-center gap-2 text-primary">
                                                         <Loader2 className="h-4 w-4 animate-spin" />
                                                         <span>Thinking...</span>
                                                     </div>
                                                 ) : (
-                                                    <div dangerouslySetInnerHTML={{ __html: parseMarkdown(msg.content) }} />
+                                                    <div dangerouslySetInnerHTML={{ __html: parseMarkdown(currentAnswer.content) }} />
                                                 )}
                                             </Card>
 
-                                            {msg.vizData && !msg.isLoading && (
+                                            {currentAnswer.vizData && !currentAnswer.isLoading && (
                                                 <Card className="mt-2 p-4 rounded-lg shadow-sm w-full max-w-full">
-                                                    <div id={`chart-wrapper-${msg.id}`} className="relative h-64 w-full">
+                                                    <div id={`chart-wrapper-${currentAnswer.id}`} className="relative h-64 w-full">
                                                         {/* Chart.js will render into a canvas here */}
                                                     </div>
                                                 </Card>
                                             )}
                                         </div>
                                     </div>
-                                ))}
+                                )}
                             </div>
                         </ScrollArea>
 
@@ -430,7 +431,7 @@ const AIChatPage = () => {
                                     disabled={isLoading}
                                     className="flex-1 text-base h-11"
                                 />
-                                <Button onClick={() => sendQuestion()} disabled={isLoading || questionInput.trim() === ''} className="h-11 px-6">
+                                <Button onClick={() => sendQuestion(questionInput)} disabled={isLoading || questionInput.trim() === ''} className="h-11 px-6">
                                     {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <SendHorizonal className="h-5 w-5" />}
                                     <span className="sr-only">Send</span>
                                 </Button>

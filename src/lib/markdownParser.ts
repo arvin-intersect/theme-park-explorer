@@ -1,3 +1,5 @@
+// FILE: src/lib/markdownParser.ts
+
 /**
  * Parses markdown tables from a given text and converts them to HTML tables.
  * This should be called before other markdown parsing to avoid issues with line breaks.
