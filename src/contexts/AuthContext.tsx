@@ -25,7 +25,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (role === 'employee') {
       // THIS IS THE LINE THAT HAS BEEN CHANGED:
       // We are now using a real ID from your mock data.
-      return '0f85ff59-5ebe-4f03-ad7c-511c43616a2f'; 
+      return '07b8feb9-2163-443e-be17-f13f5a2c2cb2'; // Leigh Bogisich's ID from csv_output/06_profiles.csv
     }
     return DEMO_USER_IDS[role];
   }, [role]);

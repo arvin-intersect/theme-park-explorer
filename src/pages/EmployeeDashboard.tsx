@@ -28,11 +28,12 @@ const ZONE_TO_DEPARTMENT_MAP: { [zoneName: string]: string } = {
   "Kiddie Kingdom": "Rides & Attractions",
   "Mystic Forest": "Rides & Attractions",
   "Dino Valley": "Rides & Attractions",
+  // These are general zones, assuming they map to specific departments or are covered by general "Park Services"
   "Park Services": "Park Services",
   "Guest Services": "Guest Services",
   "Maintenance": "Maintenance",
-  "Food Services": "Food Services",
-  "Retail & Shops": "Retail & Shops",
+  "Food Services": "Food Services", // Specific zone for Food Services
+  "Retail & Shops": "Retail & Shops", // Specific zone for Retail & Shops
   // Add more specific mappings here if your mock data implies other zone-department relationships.
 };
 
@@ -112,7 +113,7 @@ const fetchPendingManagerRequests = async (employeeId: string | null): Promise<S
   const rawShifts = data as unknown as RawShiftFromSupabaseSelect[];
 
   // Enrich with department name for display
-  const enrichedRequests: Shift[] = (rawShifts || []).map((shift) => { // No need for shift: Shift type assertion here
+  const enrichedRequests: Shift[] = (rawShifts || []).map((shift) => {
     const departmentName = shift.zones?.name ? ZONE_TO_DEPARTMENT_MAP[shift.zones.name] : undefined;
     return { ...shift, department_name: departmentName };
   });

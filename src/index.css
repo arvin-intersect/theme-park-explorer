@@ -64,6 +64,11 @@ All colors MUST be HSL.
     --sidebar-accent-foreground: 240 5.9% 10%;
     --sidebar-border: 220 13% 91%;
     --sidebar-ring: 217.2 91.2% 59.8%;
+
+    /* AI Chat Page Specific */
+    --page-background: 220 20% 88%; /* Light grey background for the new chat page */
+    --chat-header-background-start: 211 65% 23%; /* Dark navy */
+    --chat-header-background-end: 192 60% 51%; /* Teal */
   }
 
   .dark {
@@ -107,6 +112,11 @@ All colors MUST be HSL.
     --sidebar-accent-foreground: 240 4.8% 95.9%;
     --sidebar-border: 240 3.7% 15.9%;
     --sidebar-ring: 217.2 91.2% 59.8%;
+
+    /* AI Chat Page Specific (Dark Mode) */
+    --page-background: 220 25% 8%; /* Dark background */
+    --chat-header-background-start: 210 20% 12%; /* Darker navy */
+    --chat-header-background-end: 200 40% 25%; /* Darker teal */
   }
 }
 
@@ -116,6 +126,6 @@ All colors MUST be HSL.
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply text-foreground; /* Background is now set by the specific pages or the root */
   }
 }

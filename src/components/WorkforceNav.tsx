@@ -7,7 +7,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Shield, Users, User, ChevronDown, Home } from "lucide-react"; // Changed Map to Home for the new root page
+import { Shield, Users, User, ChevronDown, Home, BotMessageSquare } from "lucide-react"; // Changed Map to Home, Added BotMessageSquare
 
 const WorkforceNav = () => {
   const navigate = useNavigate();
@@ -81,6 +81,14 @@ const WorkforceNav = () => {
             >
               <User className="w-4 h-4 mr-2" />
               Employee
+            </Button>
+             <Button // NEW AI Chat Button
+              variant="ghost"
+              onClick={() => navigate("/ai-chat")}
+              className={location.pathname === "/ai-chat" ? "bg-primary/10 text-primary" : ""}
+            >
+              <BotMessageSquare className="w-4 h-4 mr-2" />
+              AI Chat
             </Button>
           </nav>
 

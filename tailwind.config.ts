@@ -57,6 +57,7 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        "page-background": "hsl(var(--page-background))", // NEW
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -97,7 +98,11 @@ export default {
         "slide-in": "slide-in 0.5s ease-out",
         "zoom-in": "zoom-in 0.4s ease-out",
       },
+      backgroundImage: { // NEW
+        "chat-header": "linear-gradient(135deg, hsl(var(--chat-header-background-start)) 0%, hsl(var(--chat-header-background-end)) 100%)",
+        "chat-background": "linear-gradient(135deg, hsl(var(--chat-gradient-background-start)) 0%, hsl(var(--chat-gradient-background-end)) 100%)",
+      },
     },
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [require("tailwindcss-animate"), require("@tailwindcss/typography")], // Added typography plugin
 } satisfies Config;

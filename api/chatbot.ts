@@ -1,4 +1,4 @@
-    // arvin-intersect-theme-park-explorer/src/api/chatbot.ts
+ // arvin-intersect-theme-park-explorer/src/api/chatbot.ts
     // This file acts as a serverless function endpoint for Vercel.
 
     import type { VercelRequest, VercelResponse } from '@vercel/node';
@@ -9,9 +9,9 @@
         formatResponseWithLLM,
         isCasualMessage,
         getCasualResponse,
-    } from './lib/aiService.js';  // ← Add .js
-    import { executeQuery } from './lib/supabaseService.js';  // ← Add .js
-    import { CACHED_QUERIES, CachedQueryResult } from './lib/constants.js'; 
+    } from './lib/aiService.js';
+    import { executeQuery } from './lib/supabaseService.js';
+    import { CACHED_QUERIES, CachedQueryResult } from './lib/constants.js';
 
     // Type definitions for API requests/responses (re-defined for clarity in this endpoint)
     interface QuestionRequestBody {

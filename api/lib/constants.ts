@@ -69,8 +69,8 @@ Tables:
 
 - daily_visitor_predictions:
   - date (date): Date of the prediction.
-  - predicted_visitors (integer): Predicted number of visitors.
-  - target_staff_count (integer): Target number of staff for the day.
+  - predicted_visitors (integer): Predicted number of visitors for that date.
+  - target_staff_count (integer): Target number of staff for that date.
 
 - realtime_metrics:
   - attraction_id (uuid): Foreign key to attractions table.
@@ -148,7 +148,7 @@ export const CACHED_QUERIES = {
     },
     "PK6": {
         "patterns": ["today's predicted visitors", "predicted visitors for today"],
-        "sql": "SELECT predicted_visitors FROM daily_visitor_predictions WHERE date = '2024-01-01'", // Using fixed date based on seeder pattern start
+        "sql": "SELECT predicted_visitors FROM daily_visitor_predictions WHERE date = '2024-01-01'",
         "description": "Predicted number of visitors for today (based on 2024-01-01 pattern).",
         "viz_type": null
     },

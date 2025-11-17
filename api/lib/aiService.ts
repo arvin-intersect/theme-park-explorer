@@ -1,12 +1,12 @@
 // arvin-intersect-theme-park-explorer/src/api/lib/aiService.ts
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { DB_SCHEMA, CACHED_QUERIES, CachedQueryResult } from "./constants.js"; 
+import { DB_SCHEMA, CACHED_QUERIES, CachedQueryResult } from "./constants.js";
 import { compareTwoStrings } from 'string-similarity';
 
 // Initialize Gemini AI
 // Ensure GEMINI_API_KEY is available in the environment (e.g., .env file or Vercel env vars)
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY as string);
-const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
+const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
 
 export function findCachedQuery(question: string): CachedQueryResult | null {
     const questionLower = question.toLowerCase();
@@ -149,7 +149,7 @@ export function isCasualMessage(question: string): boolean {
 }
 
 export async function getCasualResponse(question: string): Promise<string> {
-    const prompt = `You are a friendly AI assistant for the Peakville Amusement Park CRM system. 
+    const prompt = `You are a friendly AI assistant for the Peakville Amusement Park CRM system.
 The user said: "${question}"
 
 This is casual conversation, not a data query. Respond naturally and helpfully.
